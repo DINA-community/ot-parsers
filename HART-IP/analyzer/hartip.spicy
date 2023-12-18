@@ -1,0 +1,164 @@
+module HARTIP;
+
+import spicy;
+import HART_IP_ENUMS;
+
+##################################################
+## Network Management Specification             ##
+## HCF_SPEC-085, FCG TS20085 Rev 3.0.1          ##
+## 10 HART-IP SPECIFICATION                     ##
+##################################################
+type Command = enum {
+    READ_UNIQUE_IDENTIFIER = 0,
+    READ_LONG_TAG = 20,
+    SEND_COMMAND_TO_SUB_DEVICE = 77,
+    READ_SUB_DEVICE_IDENTITY_SUMMARY = 84
+};
+
+public type Packets = unit {
+  packets: HARTIPPacket[];
+};
+
+##################################################
+## Network Management Specification             ##
+## HCF_SPEC-085, FCG TS20085 Rev 3.0.1          ##
+## Table 26. HART-IP PDU Header Specification   ##
+##################################################
+type HARTIPPacket = unit {
+    version:	    uint8;
+    msg_type:	    uint8 &convert=HART_IP_ENUMS::MessageType($$);
+    msg_id:	        uint8 &convert=HART_IP_ENUMS::MessageID($$);
+    status_code:	uint8;
+    seq_number:	    uint16;
+    length:	        uint16;
+
+   # 10.3.2 HART-IP PDU Payloads
+    switch( self.msg_type ) {
+        HART_IP_ENUMS::MessageType::REQUEST -> {
+    	    session_initiate_req: 	SessionInitiateRequestData if( self.msg_id == HART_IP_ENUMS::MessageID::SESSION_INITIATE );
+    		                    :   bytes &size=(self.length-8) if( self.msg_id != HART_IP_ENUMS::MessageID::SESSION_INITIATE );
+    	}
+        HART_IP_ENUMS::MessageType::RESPONSE -> {
+    	    token_passing_data_res:	TokenPassingResponseData if( self.msg_id == HART_IP_ENUMS::MessageID::TOKEN_PASSING_PDU );
+    		session_initiate_data:	SessionInitiateResponseData if( self.msg_id == HART_IP_ENUMS::MessageID::SESSION_INITIATE );
+   	     }
+  };
+};
+
+##################################################
+## Network Management Specification             ##
+## HCF_SPEC-085, FCG TS20085 Rev 3.0.1          ##
+## 10.3.2 HART-IP PDU Payloads                  ##
+##################################################
+type SessionInitiateRequestData = unit {
+    req_master_type: 		    uint8;
+	req_inactivity_close_time:	uint32 &convert=cast<interval>($$);
+};
+
+type SessionInitiateResponseData = unit {
+	master_type: 		        uint8;
+	inactivity_close_time:	    uint32 &convert=cast<interval>($$);
+};
+
+##################################################
+## Token-Passing Data Link Layer Specification  ##
+## HCF_SPEC-081, FCG TS20081 Rev 9.1            ##
+## 5.1. The Standard Token-Passing PDU          ##
+##################################################
+type TokenPassingResponseData = unit {
+  	delimiter:	bitfield(8) {
+  			  address_type: 7;
+  			};
+  	switch( self.delimiter.address_type) {
+  	    0 -> address:	bytes &size=1;
+  		1 -> address:	bytes &size=5;
+  	};
+
+	command:	    uint8 &convert=Command($$);
+	byte_count:	    uint8;
+	response_code:	uint8;
+	device_status:	uint8;
+
+	switch( self.command ) {
+	    Command::READ_UNIQUE_IDENTIFIER 		    -> device_identifier: ReadUniqueIdentifier if( self.response_code == 0  );
+	    Command::READ_LONG_TAG 			            -> long_tag: ReadLongTag if( self.response_code == 0  );
+	    Command::READ_SUB_DEVICE_IDENTITY_SUMMARY 	-> sub_device_identifier: ReadSubDeviceIdentitySummary if( self.response_code == 0  );
+	    Command::SEND_COMMAND_TO_SUB_DEVICE 		-> send_cmd_info: SendCommandToSubDeviceResponseData if( self.response_code == 0  );
+	    * 						                    -> : bytes &size=(self.byte_count - 2);
+	};
+
+	checksum:	uint8;
+};
+
+##################################################
+## Common Practice Command Specification        ##
+## HCF_SPEC-151, FCG TS20151 Rev 12.0.1         ##
+## 7.45 Command 77 Send Command to Sub-Device   ##
+##################################################
+type SendCommandToSubDeviceResponseData = unit {
+	            :	uint8;
+	            :	uint8;
+	            :	uint8;
+	            :   bytes &size=5;
+	emb_command:    uint8 &convert=Command($$);
+	byte_count:     uint8;
+	            :	uint8;
+	            :	uint8;
+
+	switch( self.emb_command ) {
+	    Command::READ_UNIQUE_IDENTIFIER -> data: ReadUniqueIdentifier;
+	    *                               ->     : bytes &size=(self.byte_count - 2);
+	};
+};
+
+##################################################
+## Universal Command Specification              ##
+## HCF_SPEC-127, FCG TS20127 Rev 7.2            ##
+## 6.1 Command 0 Read Unique Identifier         ##
+##################################################
+type ReadUniqueIdentifier = unit {
+	            :	uint8;
+	exp_dev_type:	uint16 &convert=HART_IP_ENUMS::ExpandedDeviceTypeCodes($$);
+	            :   uint8;
+	hart_revision:	uint8;
+	dev_revision:	uint8;
+	sw_revision:	uint8;
+	            :   uint8;
+	flags:  		uint8;
+	dev_id: 		bytes &size=3 &convert=spicy::bytes_to_hexstring($$);
+	            :   uint8;
+	            :   uint8;
+	            :   uint16;
+	            :   uint8;
+	manufacture_id:	uint16 &convert=HART_IP_ENUMS::ManufacturerIdentificationCodes($$);
+	private_label:	uint16 &convert=HART_IP_ENUMS::ManufacturerIdentificationCodes($$);
+	dev_profile:	uint8;
+};
+
+##################################################
+## Universal Command Specification              ##
+## HCF_SPEC-127, FCG TS20127 Rev 7.2            ##
+## 6.20 Command 20 Read Long Tag                ##
+##################################################
+type ReadLongTag = unit {
+	long_tag:	bytes &size=32;
+};
+
+######################################################
+## Common Practice Command Specification            ##
+## HCF_SPEC-151, FCG TS20151 Rev 12.0.1             ##
+## 7.52 Command 84 Read Sub-Device Identity Summary ##
+######################################################
+type ReadSubDeviceIdentitySummary = unit {
+	sub_dev_index:  uint16;
+	             :	uint8;
+	            :   uint8;
+	manufacture_id:	uint16 &convert=HART_IP_ENUMS::ManufacturerIdentificationCodes($$);
+	exp_dev_type:	uint16 &convert=HART_IP_ENUMS::ExpandedDeviceTypeCodes($$);
+	dev_id:		    bytes &size=3 &convert=spicy::bytes_to_hexstring($$);
+	ucmd_revision:	uint8;
+	long_tag:	    bytes &size=32;
+	dev_revision:	uint8;
+	dev_profile:	uint8;
+	private_label:	uint16 &convert=HART_IP_ENUMS::ManufacturerIdentificationCodes($$);
+};

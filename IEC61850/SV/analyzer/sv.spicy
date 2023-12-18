@@ -1,0 +1,133 @@
+
+module sv;
+
+import spicy;
+import ASN1;
+
+public type Message = unit {
+	appid: uint16;
+	length: uint16;
+	# Infos über Simuated Flag und reserved bits(three bits are reserved for future standardized application and shall be set to 0 as default)
+	reserved1: bytes &size=2;	
+	# Reserved 2 field and the “reserved security” of Reserved 1 field form a 28 bits word defined by the security standard IEC/TS 62351-6.	
+	reserved2: bytes &size=2;		
+
+	APDU: ASN1::ASN1Message(True)[] &eod;
+
+	# APDU Variable Declarations
+	var noASDU: uint64;
+	var svID: string;
+	var smpCnt: uint64;
+	var confRev: uint64;
+	var smpSynch: uint64;
+
+	# Optional Elements
+	var datset: bytes &optional;
+	var refrTm: bytes;
+	var smpRate: bytes;
+	var smpMode: bytes;
+	var sample: bytes;
+	var t: bytes;
+
+	svAPDUdata: ASN1::ASN1Message(True)[] &parse-from=self.APDU.front().application_data;
+	
+	savPDU: ASN1::ASN1Message(True)[] &parse-from=self.svAPDUdata.back().application_data;
+
+	# sequence_of_ASDUs: ASN1::ASN1Message(True)[] &parse-from=self.savPDU.front().body.seq;
+
+	on savPDU {
+		for ( element in self.savPDU.front().body.seq.submessages ) {
+			local tag = element.application_id;
+			switch (tag) {
+				case 0: {self.svID = element.application_data.decode(); }
+				case 1: {self.datset = element.application_data; } # not tested
+				case 2: {self.smpCnt =  element.application_data.to_uint(spicy::ByteOrder::Big); }
+				case 3: {self.confRev = element.application_data.to_uint(spicy::ByteOrder::Big); }
+				case 4: {self.refrTm = element.application_data; }  # not tested
+				case 5: {self.smpSynch = element.application_data.to_uint(spicy::ByteOrder::Big); }
+				case 6: {self.smpRate = element.application_data;}  # not tested
+				case 7: {self.sample = element.application_data;}
+				case 8: {self.smpMode = element.application_data;}  # not tested
+				case 9: {self.t = element.application_data;}  # not tested
+
+				default: {print "error in tlv decoding, tag not implemented:"; print tag;}
+			}
+	 	}
+	}
+
+	on %done { 
+		print self; 
+		# print self.savPDU.front().body.seq;
+		}
+
+	on %error(msg: string) { 
+		print msg; }
+
+};
+
+
+type savPDU = unit {
+	iec61850_9_2_savPDU: bitfield(8) {
+		class: 6..7;	
+		p_or_c: 5;		# primitive or constructed Encoding
+		tag: 0..4;
+	};
+
+	length_savPDUs: uint8;
+	noASDU: uint8;
+
+	iec61850_9_2_asdu: bitfield(8) {
+		class: 6..7;	
+		p_or_c: 5;		# primitive or constructed Encoding
+		tag: 0..4;
+	};
+
+	length_all_ASDU: uint8;
+	firstASDU: ASDU;
+
+	# undecoded data
+	data: bytes &eod;
+
+};
+
+type ASDU = unit {
+	iec61850_9_2_ASDUtype: bitfield(8) {
+		class: 6..7;	
+		p_or_c: 5;		# primitive or constructed Encoding
+		tag: 0..4;
+	};
+	length_ASDU: uint8;
+
+	iec61850_9_2_sv_id: bitfield(8) {
+		class: 6..7;	
+		p_or_c: 5;		# primitive or constructed Encoding
+		tag: 0..4;
+	};
+	length_svid: uint8;
+	sv_id: bytes &size=self.length_svid;
+
+	iec61850_9_2_smpCnt: bitfield(8) {
+		class: 6..7;	
+		p_or_c: 5;		# primitive or constructed Encoding
+		tag: 0..4;
+	};
+	length_smpCnt: uint8;
+	smpCnt: bytes &size=self.length_smpCnt &convert=$$.to_uint(spicy::ByteOrder::Big);
+
+	iec61850_9_2_confRev: bitfield(8) {
+		class: 6..7;	
+		p_or_c: 5;		# primitive or constructed Encoding
+		tag: 0..4;
+	};
+	length_confRev: uint8;
+	confRev: bytes &size=self.length_confRev &convert=$$.to_uint(spicy::ByteOrder::Big);
+
+	iec61850_9_2_smpSynch: bitfield(8) {
+		class: 6..7;	
+		p_or_c: 5;		# primitive or constructed Encoding
+		tag: 0..4;
+	};
+	length_smpSynch: uint8;
+	smpSynch: bytes &size=self.length_smpSynch;
+
+};

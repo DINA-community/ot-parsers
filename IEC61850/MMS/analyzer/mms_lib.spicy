@@ -1,0 +1,1610 @@
+module mms_lib;
+
+import spicy;
+import ASN1;
+
+# ISO 9506-2:2003, 7.5.3. ObjectName ####################################################################################
+type OBJECT_NAME = unit {
+
+	# Declaration
+	var domainID: string;
+	var itemID: string;
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ) {
+
+		# VMD-Specific
+		0 -> vmdspecific: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::UTF8);
+
+		# Domain-Specific
+		1 -> domainspecific: ASN1::ASN1Message(True)[] &size=self.len.len;
+
+		# AA-Specific
+		2 -> aaspecific: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::UTF8);
+
+	};
+
+	# Get domain and item ID
+	on domainspecific {
+		self.domainID = self.domainspecific[0].body.str_value;
+		self.itemID = self.domainspecific[1].body.str_value;
+	}
+
+};
+
+# ISO 9506-2:2003, 7.5.4 ObjectClass ###################################################################################
+type OBJECT_CLASS = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ) {
+
+		# Basic object class
+		0 -> basicObjectClass: uint8 &size=self.len.len &convert=BASIC_OBJ_CLASS($$);
+
+		# CS object class
+		1 -> csObjectClass: uint8 &size=self.len.len &convert=CS_OBJ_CLASS($$);
+
+	};
+
+};
+
+# Basic object class
+type BASIC_OBJ_CLASS = enum {
+	NAMED_VARIABLE = 0,
+	SCATTERED_ACCESS = 1,
+	NAMED_VARIABLE_LIST = 2,
+	NAMED_TYPE = 3,
+	SEMAPHORE = 4,
+	EVENT_CONDITION = 5,
+	EVENT_ACTION = 6,
+	EVENT_ENROLLMENT = 7,
+	JOURNAL = 8,
+	DOMAIN = 9,
+	PROGRAM_INVOCATION = 10,
+	OPERATOR_STATION = 11,
+	DATA_EXCHANGE = 12,
+	ACCESS_CONTROL_LIST = 13,
+};
+
+# CS object class
+type CS_OBJ_CLASS = enum {
+	EVENT_CONDITION_LIST = 0,
+	UNIT_CONTROL = 1,
+};
+
+# ISO 9506-2:2003, 10.2 Status Response Parameter ######################################################################
+type STATUS_RESPONSE = unit {
+
+	# Declaration
+	var localDetail: bytes;
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# VMD logical status
+		0 -> vmdLogicalStatus: uint8 &size=self.len.len &convert=VMD_LOGICAL_STATUS($$);
+
+		# VMD physical status
+		1 -> vmdPhysicalStatus: uint8 &size=self.len.len &convert=VMD_PHYSICAL_STATUS($$);
+
+		# Local detail
+		2 -> {
+			:ASN1::ASN1BitString(self.len.len, self.id.constructed){
+				self.localDetail = $$.value_bits;
+			}
+		}
+
+	};
+
+};
+
+# VMD logical status
+type VMD_LOGICAL_STATUS = enum{
+	STATE_CHANGES_ALLOWED = 0,
+	NO_STATE_CHANGES_ALLOWED = 1,
+	LIMITED_SERVICES_PERMITTED = 2,
+	SUPPORT_SERVICES_ALLOWED = 3,
+};
+
+# VMD physical status
+type VMD_PHYSICAL_STATUS = enum{
+	OPERATIONAL = 0,
+	PARTIALLY_OPERATIONAL = 1,
+	INOPERABLE = 2,
+	NEEDS_COMMISSIONING = 3,
+};
+
+# ISO 9506-2:2003, 10.5 GetNameList ####################################################################################
+type GET_NAME_LIST_REQUEST = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# Object class
+		0 -> objectClass: OBJECT_CLASS[] &size=self.len.len;
+
+		# Object scope
+		1 -> objectScope: OBJECT_SCOPE[] &size=self.len.len;
+
+		# Continue after
+		2 -> continueAfter: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::UTF8);
+
+	};
+
+};
+
+type GET_NAME_LIST_RESPONSE = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ) {
+
+		# List of identifier
+		0 -> listOfIdentifier: IDENTIFIER[] &size=self.len.len;
+
+		# ...
+		1 -> moreFollows: uint8 &convert=cast<bool>($$) &requires=self.len.len==1;
+
+	};
+
+};
+
+# Object scope
+type OBJECT_SCOPE = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ) {
+
+		# VMD-Specific
+		0 -> {
+			var vmdspecific: bool = True;
+		}
+
+		# Domain-Specific
+		1 -> domainspecific: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::UTF8);
+
+		# AA-Specific
+		2 -> {
+			var aaspecific: bool = True;
+		}
+
+	};
+	
+};
+
+# Identifier
+type IDENTIFIER = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	# Identifier name
+	name: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::ASCII);
+
+};
+
+# ISO 9506-2:2003, 10.6 Identify #######################################################################################
+type IDENTIFY = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+	
+		# Vendor name --> not implemented (ISO 646 character set not available in spicy)
+		0 -> vendorName: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::ASCII);
+
+		# Model name --> not implemented (ISO 646 character set not available in spicy)
+		1 -> modelName: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::ASCII);
+
+		# Revision --> not implemented (ISO 646 character set not available in spicy)
+		2 -> revision: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::ASCII);
+
+		# List of abstract syntaxes --> not implemented
+		3 -> listOfAbstractSyntaxes: bytes &size=self.len.len;
+
+	};
+
+};
+
+# ISO 9506-2:2003, 14.5.1 VariableAccessSpecification ##################################################################
+type VARIABLE_ACCESS_SPEC = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ) {
+
+		# List of variables
+		0 -> listOfVariable: LIST_OF_VAR[] &size=self.len.len;
+
+		# Variable list name
+		1 -> variableListName: OBJECT_NAME &size=self.len.len;
+
+	};
+
+};
+
+# List of variables
+type LIST_OF_VAR = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ) {
+
+		# Alternate access --> not implemented
+		5 -> alternateAccess: bytes &size=self.len.len;
+
+		# Variable specification
+		* -> variableSpecification: VARIABLE_SPEC[] &size=self.len.len;
+
+	};
+
+};
+
+# ISO 9506-2:2003, 14.5.2 VariableSpecification ########################################################################
+type VARIABLE_SPEC = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ) {
+
+		# ObjectName
+		0 -> name: OBJECT_NAME &size=self.len.len;
+
+		# Address
+		1 -> address: ADDRESS &size=self.len.len;
+
+		# VariableDescription --> not implemented
+		2 -> variableDescription: bytes &size=self.len.len;
+
+		# ScatteredAccessDescription --> not implemented
+		3 -> scatteredAccessDescription: bytes &size=self.len.len;
+
+		# Invalidated --> not implemented
+		4 -> invalidated: bytes &size=self.len.len;
+
+	};
+
+};
+
+# ISO 9506-2:2003, 14.6 Read ###########################################################################################
+type READ_REQUEST = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ) {
+
+		# Specification with result
+		0 -> specificationWithResult: uint8 &convert=cast<bool>($$) &requires=self.len.len==1;
+
+		# Variable access specification
+		1 -> variableAccessSpecification: VARIABLE_ACCESS_SPEC &size=self.len.len;
+
+	};
+
+};
+
+type READ_RESPONSE = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ) {
+
+		# Variable access specification
+		0 -> variableAccessSpecification: VARIABLE_ACCESS_SPEC &size=self.len.len;
+
+		# List of access results
+		1 -> listOfAccessResult: ACCESS_RESULT[] &size=self.len.len;
+
+	};
+
+};
+
+# ISO 9506-2:2003, 14.7 Write ##########################################################################################
+type WRITE_REQUEST = unit{
+
+	# Variable access specification
+	variableAccessSpecification: VARIABLE_ACCESS_SPEC;
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	# List of data objects
+	listOfData: DATA[];
+
+};
+
+type WRITE_RESPONSE = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ) {
+
+		# Data access error
+		0 -> failure: uint8 &size=self.len.len &convert=DATA_ACCESS_ERROR($$);
+
+		# Data success
+		1 -> {
+			var success: bool = True;
+		}
+
+	};
+
+};
+
+# ISO 9506-2:2003, 14.8 InformationReport ##############################################################################
+type INFORMATION_REPORT = unit{
+
+	# VariableAccessSpecification
+	variableAccessSpecification: VARIABLE_ACCESS_SPEC;
+
+	# List of AccessResults
+	listOfAccessResult: ACCESS_RESULT;
+
+};
+
+# ISO 9506-2:2003, 14.9 GetVariableAccessAttributes ####################################################################
+type GET_VAR_ACCESS_ATTR_REQUEST = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ) {
+
+		# Object name
+		0 -> name: OBJECT_NAME &size=self.len.len;
+
+		# Address
+		1 -> address: ADDRESS &size=self.len.len;
+
+	};
+
+};
+
+type GET_VAR_ACCESS_ATTR_RESPONSE = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+	
+	switch ( self.id.tag ){
+
+		# MMS deletable
+		0 -> mmsDeletable: uint8 &convert=cast<bool>($$) &requires=self.len.len==1;
+
+		# Address
+		1 -> address: ADDRESS &size=self.len.len;
+
+		# Type description
+		2 -> typeDescription: TYPE_DESCRIPTION &size=self.len.len;
+
+		# Access control list
+		3 -> accessControlList: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::UTF8);
+
+		# Meaning
+		4 -> meaning: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::UTF8);
+
+	};
+
+};
+
+# Address
+type ADDRESS = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ) {
+
+		# Numeric address
+		0 -> numericAddress: bytes &size=self.len.len &convert=$$.to_uint(spicy::ByteOrder::Big);
+
+		# Symbolic address --> not implemented (ISO 646 character set not available in spicy)
+		1 -> symbolicAddress: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::ASCII);
+
+		# Uncontrained address
+		2 -> unconstrainedAddress: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::ASCII);
+
+	};
+
+};
+
+# Type description
+type TYPE_DESCRIPTION = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# Name
+		0 -> name: OBJECT_NAME &size=self.len.len;
+
+		# Array
+		1 -> array: ARRAY[] &size=self.len.len;
+
+		# Structure
+		2 -> structure: STRUCTURE[] &size=self.len.len;
+
+		# Boolean value
+		3 -> {
+			var boolean: bool = True;
+		}
+
+		# Bitstring value
+		4 -> bitstring: bytes &size=self.len.len &convert=$$.to_int(spicy::ByteOrder::Big);
+
+		# Integer value
+		5 -> integer: bytes &size=self.len.len &convert=$$.to_uint(spicy::ByteOrder::Big);
+
+		# Unsigned integer value
+		6 -> unsigned: bytes &size=self.len.len &convert=$$.to_uint(spicy::ByteOrder::Big);
+
+		# FLoating point value --> not implemented
+		7 -> floatingpoint: bytes &size=self.len.len;
+
+		# Octetstring value
+		9 -> octetstring: bytes &size=self.len.len &convert=$$.to_uint(spicy::ByteOrder::Big);
+
+		# Visible string value
+		10 -> visiblestring: bytes &size=self.len.len &convert=$$.to_uint(spicy::ByteOrder::Big);
+
+		# Generalized time value
+		11 -> {
+			var generalizedtime: bool = True;
+		}
+
+		# Binary time value
+		12 -> binarytime: uint8 &convert=cast<bool>($$) &requires=self.len.len==1;
+
+		# BCD value
+		13 -> bcd: bytes &size=self.len.len &convert=$$.to_uint(spicy::ByteOrder::Big);
+
+		# Object identifier value
+		15 -> { 
+			var objId: bool = True;
+		}
+
+		# MMS string value
+		16 -> mMSString: bytes &size=self.len.len &convert=$$.to_uint(spicy::ByteOrder::Big);
+
+	};
+
+};
+
+# Array
+type ARRAY = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# Packed
+		0 -> packed: uint8 &convert=cast<bool>($$) &requires=self.len.len==1;
+
+		# Number of elements
+		1 -> numberOfElements: bytes &size=self.len.len &convert=$$.to_uint(spicy::ByteOrder::Big);
+
+		# Element type
+		2 -> elementType: TYPE_DESCRIPTION &size=self.len.len;
+
+	};
+
+};
+
+# Structure
+type STRUCTURE = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# Packed
+		0 -> packed: uint8 &convert=cast<bool>($$) &requires=self.len.len==1;
+
+		# Components
+		1 -> components: COMPONENTS[] &size=self.len.len;
+
+	};
+
+};
+
+# Components
+type COMPONENTS = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	# Component
+	component: COMPONENT[] &size=self.len.len;
+
+};
+
+# Component
+type COMPONENT = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+	
+		# Component name
+		0 -> componentName: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::UTF8);
+
+		# Component type --> not implemented
+		1 -> componentType: bytes &size=self.len.len;
+
+	};
+
+};
+
+# ISO 9506-2:2003, 14.12 DefineNamedVariableList #######################################################################
+type DEF_NAMED_VAR_LIST = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# List of variables
+		0 -> listOfVariable: LIST_OF_VAR[] &size=self.len.len;
+
+		# Variable list name
+		* -> variableListName: OBJECT_NAME &size=self.len.len;
+
+	};
+
+};
+
+# ISO 9506-2:2003, 14.13 GetNamedVariableListAttributes ###############################################################
+type GET_NAMED_VAR_LIST_ATTR = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# ...
+		0 -> mmsDeletable: uint8 &convert=cast<bool>($$) &requires=self.len.len==1;
+
+		# List of variables
+		1 -> listOfVariable: LIST_OF_VAR[] &size=self.len.len;
+
+		# Access control list
+		2 -> accessControlList: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::UTF8);
+
+	};
+
+};
+
+# ISO 9506-2:2003, 14.14 DeleteNamedVariableList #######################################################################
+type DELETE_NAMED_VARIABLELIST_REQUEST = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# Scope of delete
+		0 -> scopeOfDelete: uint8 &size=self.len.len &convert=SCOPE_OF_DELETE($$);
+
+		# List of variable list names
+		1 -> listOfVariableListName: OBJECT_NAME[] &size=self.len.len;
+
+		# Domain name
+		2 -> {
+			nameid: ID;
+			namelength: ASN1::LengthType;
+			domainName: ASN1::ASN1OctetString(self.namelength.len, self.nameid.constructed) &convert=$$.value.decode(hilti::Charset::UTF8);
+		}		
+
+	};
+
+};
+
+type DELETE_NAMED_VARIABLELIST_RESPONSE = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# Number of matched items
+		0 -> numberMatched: bytes &size=self.len.len &convert=$$.to_uint(spicy::ByteOrder::Big);
+
+		# Number of deleted items
+		1 -> numberDeleted: bytes &size=self.len.len &convert=$$.to_uint(spicy::ByteOrder::Big);
+
+	};
+
+};
+
+type SCOPE_OF_DELETE = enum{
+	SPECIFIC = 0,
+	AA_SPECIFIC = 1,
+	DOMAIN = 2,
+	VMD = 3,
+};
+
+# ISO 9506-2:2003, 14.4.1 AccessResult #################################################################################
+type ACCESS_RESULT = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	# Data objects
+	data: DATA[] &size=self.len.len;
+
+};
+
+# ISO 9506-2:2003, 14.4.2 Data ########################################################################################
+type DATA = unit {
+
+	# Declaration
+	var bitstring: bytes;
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ) {
+
+		# Data access error
+		0 -> failure: uint8 &size=self.len.len &convert=DATA_ACCESS_ERROR($$);
+
+		# Data object structure or sequence
+		1,2 -> data: DATA[] &size=self.len.len;
+
+		# Boolean value
+		3 -> boolean: uint8 &convert=cast<bool>($$) &requires=self.len.len==1;
+
+		# Bitstring value
+		4 -> {
+			:ASN1::ASN1BitString(self.len.len, self.id.constructed){
+				self.bitstring = $$.value_bits;
+			}
+		}
+
+		# Signed integer value
+		5 -> integer: bytes &size=self.len.len &convert=$$.to_int(spicy::ByteOrder::Big);
+
+		# Unsigned integer value
+		6 -> unsigned_integer: bytes &size=self.len.len &convert=$$.to_uint(spicy::ByteOrder::Big);
+
+		# Floating point value (IEEE 754 single or double precision)
+		7 -> floatingpoint: FLOAT(self.len.len) &size=self.len.len;
+
+		# Octetstring value
+		9 -> octetstring: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::ASCII);
+
+		# Visible string value
+		10 -> visiblestring: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::UTF8);
+
+		# Generalized time value
+		11 -> generalizedtime: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::ASCII);
+
+		# Binary time (relative day since January 1, 1984)
+		12 -> binaryTime: BINARY_TIME &size=self.len.len;
+
+		# BCD value
+		13 -> bcd: bytes &size=self.len.len &convert=$$.to_int(spicy::ByteOrder::Big);
+
+		# Boolean array value
+		14 -> booleanarray: ASN1::ASN1BitString(self.len.len, self.id.constructed);
+
+		# Object identifier value
+		15 -> objId: ASN1::ASN1ObjectIdentifier(self.len.len) &convert=$$.oidstring;
+
+		# MMS String value --> not implemented (ISO 646 character set not available in spicy)
+		16 -> mMSString: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::ASCII);
+
+		# UTC Time (elapsed number of seconds since GMT midnight January 1, 1970)
+		17 -> utcTime: UTC_TIME &size=self.len.len;
+
+	};
+
+};
+
+# Binary time
+type BINARY_TIME = unit {
+
+	var TimeOfDay: uint64;
+	var DaysSince1984: uint64;
+
+	: bytes &eod{
+		self.TimeOfDay = $$.sub(0, 4).to_uint(spicy::ByteOrder::Big);
+		self.DaysSince1984 = $$.sub(4, 7).to_uint(spicy::ByteOrder::Big);
+	}
+};
+
+# UTC time
+type UTC_TIME = unit {
+
+	var SecondSinceEpoch: time;
+	var FractionOfSecond: uint64;
+	var TimeQuality: bytes;
+
+	: bytes &eod{
+		self.SecondSinceEpoch = $$.sub(0, 4).to_time(spicy::ByteOrder::Big);
+		self.FractionOfSecond = $$.sub(4, 7).to_uint(spicy::ByteOrder::Big);
+		self.TimeQuality = $$.sub(7, 8);
+	}
+};
+
+# ISO 9506-2:2003, 14.4.3 DataAccessError ##############################################################################
+type DATA_ACCESS_ERROR = enum {
+	OBJECT_INVALIDATED = 0,
+	HARDWARE_FAULT = 1,
+	TEMPORARILY_UNAVAILABLE = 2,
+	OBJECT_ACCESS_DENIED = 3,
+	OBJECT_UNDEFINED = 4,
+	INVALID_ADDRESS = 5,
+	TYPE_UNSUPPORTED = 6,
+	TYPE_INCONSISTENT = 7,
+	OBJECT_ATTRIBUTE_INCONSISTENT = 8,
+	OBJECT_ACCESS_UNSUPPORTED = 9,
+	OBJECT_NON_EXISTENT = 10,
+	OBJECT_VALUE_INVALID = 11,
+};
+
+# ISO 9506-2:2003, 14.4.4.2 The FloatingPoint Type #####################################################################
+type FLOAT = unit (size: uint64) {
+
+	# Declaration
+	var SIGN: bool;
+	var EXP: uint32;
+	var FRAC: uint32;
+
+	# Exponent width
+	N: uint8;
+	
+	switch ( self.N ) {
+
+		# IEEE 754 single precision
+		8 -> value: real &type=spicy::RealType::IEEE754_Single &byte-order=spicy::ByteOrder::Little;
+
+		# IEEE 754 double precision
+		11 -> value: real &type=spicy::RealType::IEEE754_Double &byte-order=spicy::ByteOrder::Little;
+
+		* -> unknown: bytes &eod;
+	};
+
+};
+
+# ISO 9506-2:2003, C.2 ObtainFile #####################################################################################
+type OBTAIN_FILE = unit {
+
+	# Declaration
+	var sourceFile: string;
+	var destinationFile: string;
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# Source file server --> not implemented
+		0 -> sourceFileServer: bytes &size=self.len.len;
+
+		# Source file
+		1 -> {
+			: ASN1::ASN1Message(True) &size=self.len.len {
+				self.sourceFile = $$.body.str_value; 
+			}
+		}
+
+		# Destination file
+		2 -> {
+			: ASN1::ASN1Message(True) &size=self.len.len {
+				self.destinationFile = $$.body.str_value; 
+			}
+		}
+
+	};
+
+};
+
+# ISO 9506-2:2003, D.2 FileOpen #######################################################################################
+type FILE_OPEN_REQUEST = unit {
+
+	# Declaration
+	var fileName: string;
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# File name
+		0 -> {
+			: ASN1::ASN1Message(True) &size=self.len.len {
+				self.fileName = $$.body.str_value;
+			}
+		}
+
+		# Initial position
+		1 -> initialPosition: bytes &size=self.len.len &convert=$$.to_uint(spicy::ByteOrder::Big);
+
+	};
+
+};
+
+type FILE_OPEN_RESPONSE = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# FRSM ID
+		0 -> frsmID: bytes &size=self.len.len &convert=$$.to_uint(spicy::ByteOrder::Big);
+
+		# File attributes
+		1 -> fileAttributes: FILE_ATTRIBUTES[] &size=self.len.len;
+
+	};
+
+};
+
+# ISO 9506-2:2003, D.3 FileRead #######################################################################################
+type FILE_READ = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# File data
+		0 -> fileData: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::ASCII);
+
+		# More follows
+		1 -> moreFollows: uint8 &convert=cast<bool>($$) &requires=self.len.len==1;
+
+	};
+
+};
+
+# ISO 9506-2:2003, D.5 FileRename #####################################################################################
+type FILE_RENAME = unit {
+
+	# Declaration
+	var currentFileName: string;
+	var newFileName: string;
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# Current file name
+		0 -> {
+			: ASN1::ASN1Message(True) &size=self.len.len {
+				self.currentFileName = $$.body.str_value; 
+			}
+		}
+
+		# New file name
+		1 -> {
+			: ASN1::ASN1Message(True) &size=self.len.len {
+				self.newFileName = $$.body.str_value;
+			}
+		}
+
+	};
+
+};
+
+# ISO 9506-2:2003, D.7 FileDirectoy ###################################################################################
+type FILE_DIR_REQUEST = unit {
+
+	# Declaration
+	var fileSpecification: string;
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# File specification
+		0 -> {
+			: ASN1::ASN1Message(True) &size=self.len.len {
+				self.fileSpecification = $$.body.str_value;
+			}
+		}
+
+		# Continue after
+		1 -> continueAfter: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::UTF8);
+
+	};
+
+};
+
+type FILE_DIR_RESPONSE = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# Dictionary entry
+		0 -> {
+			listID: ID;
+			listLen: ASN1::LengthType;
+			ListOfDirectoryEntry: LIST_DIR_ENTRY[] &size=self.listLen.len;
+		}
+
+		# More follows
+		1 -> moreFollows: uint8 &convert=cast<bool>($$) &requires=self.len.len==1;
+
+	};
+
+};
+
+type LIST_DIR_ENTRY = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	# Directory entries
+	DirectoryEntry: DIR_ENTRY[] &size=self.len.len;
+
+};
+
+type DIR_ENTRY = unit {
+
+	# Declaration
+	var fileName: string;
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# File name
+		0 -> {
+			: ASN1::ASN1Message(True) &size=self.len.len {
+				self.fileName = $$.body.str_value;
+			}
+		}
+
+		# File attributes
+		1 -> fileAttributes: FILE_ATTRIBUTES[] &size=self.len.len;
+
+	};
+
+};
+
+# ISO 9506-2:2003, D.8 FileAttributes #################################################################################
+type FILE_ATTRIBUTES = unit {
+
+	# Get ASN.1 identifier
+	id: ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# Size of file
+		0 -> sizeOfFile: bytes &size=self.len.len &convert=$$.to_uint(spicy::ByteOrder::Big);
+
+		# Last modified
+		1 -> lastModified: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::ASCII);
+
+	};
+
+};
+
+# Parameter support options
+type PARA_SUPPORT_OPTIONS = unit {
+
+	# Declaration
+	var STR1: bool;
+	var STR2: bool;
+	var VNAM: bool;
+	var VALT: bool;
+	var VADR: bool;
+	var VSCA: bool;
+	var TPY: bool;
+	var VLIS: bool;
+	var CEI: bool;
+	var ACO: bool;
+	var SEM: bool;
+	var CSR: bool;
+	var CSNC: bool;
+	var CSPLC: bool;
+	var CSPI: bool;
+
+	: bitfield(8) {
+		bit1: 7;
+		bit2: 6;
+		bit3: 5;
+		bit4: 4;
+		bit5: 3;
+		bit6: 2;
+		bit7: 1;
+		bit8: 0;
+	}{
+		self.STR1 = $$.bit1==1;
+		self.STR2 = $$.bit2==1;
+		self.VNAM = $$.bit3==1;
+		self.VALT = $$.bit4==1;
+		self.VADR = $$.bit5==1;
+		self.VSCA = $$.bit6==1;
+		self.TPY = $$.bit7==1;
+		self.VLIS = $$.bit8==1;
+	}
+
+	: bitfield(8) {
+		bit1: 7;
+		bit2: 6;
+		bit3: 5;
+		bit4: 4;
+		bit5: 3;
+		bit6: 2;
+		bit7: 1;
+		bit8: 0;
+	}{
+		self.CEI = $$.bit1==1;
+		self.ACO = $$.bit2==1;
+		self.SEM = $$.bit3==1;
+		self.CSR = $$.bit4==1;
+		self.CSNC = $$.bit5==1;
+		self.CSPLC = $$.bit6==1;
+		self.CSPI = $$.bit7==1;
+	}
+
+};
+
+# Service support options
+type SERVICE_SUPPORT_OPTIONS = unit {
+
+	# Declaration
+	var STATUS: bool;
+	var GET_NAMELIST: bool;
+	var IDENTIFY: bool;
+	var RENAME: bool;
+	var READ: bool;
+	var WRITE: bool;
+	var GET_VARIABLE_ACCESS_ATTRIBUTES: bool;
+	var DEFINE_NAMED_VARIABLE: bool;
+	var DEFINE_SCATTERED_ACCESS: bool;
+	var GET_SCATTERED_ACCESS_ATTRIBUTES: bool;
+	var DELETE_VARIABLE_ACCESS: bool;
+	var DEFINE_NAMED_VARIABLELIST: bool;
+	var GET_NAMED_VARIABLELIST_ATTRIBUTES: bool;
+	var DELETE_NAMED_VARIABLELIST: bool;
+	var DEFINE_NAMED_TYPE: bool;
+	var GET_NAMED_TYPE_ATTRIBUTES: bool;
+	var DELETE_NAMED_TYPE: bool;
+	var INPUT: bool;
+	var OUTPUT: bool;
+	var TAKE_CONTROL: bool;
+	var RELINQUISH_CONTROL: bool;
+	var DEFINE_SEMAPHORE: bool;
+	var DELETE_SEMAPHORE: bool;
+	var REPORT_SEMAPHORE_STATUS: bool;
+	var REPORT_POOL_SEMAPHORE_STATUS: bool;
+	var REPORT_SEMAPHORE_ENTRYSTATUS: bool;
+	var INITIATE_DOWNLOAD_SEQUENCE: bool;
+	var DOWNLOAD_SEGMENT: bool;
+	var TERMINATE_DOWNLOAD_SEQUENCE: bool;
+	var INITIATE_UPLOAD_SEQUENCE: bool;
+	var UPLOAD_SEGMENT: bool;
+	var TERMINATE_UPLOAD_SEQUENCE: bool;
+	var REQUEST_DOMAIN_DOWNLOAD: bool;
+	var REQUEST_DOMAIN_UPLOAD: bool;
+	var LOAD_DOMAIN_CONTENT: bool;
+	var STORE_DOMAIN_CONTENT: bool;
+	var DELETE_DOMAIN: bool;
+	var GET_DOMAIN_ATTRIBUTES: bool;
+	var CREATE_PROGRAM_INVOCATION: bool;
+	var DELETE_PROGRAM_INVOCATION: bool;
+	var START: bool;
+	var STOP: bool;
+	var RESUME: bool;
+	var RESET: bool;
+	var KILL: bool;
+	var GET_PROGRAM_INVOCATION_ATTRIBUTES: bool;
+	var OBTAIN_FILE: bool;
+	var DEFINE_EVENT_CONDITION: bool;
+	var GET_EVENT_CONDITION_ATTRIBUTES: bool;
+	var REPORT_EVENT_CONDITION_STATUS: bool;
+	var ALTER_EVENT_CONDITION_MONITORING: bool;
+	var TRIGGER_EVENT: bool;
+	var DEFINE_EVENT_ACTION: bool;
+	var DELETE_EVENT_ACTION: bool;
+	var GET_EVENT_ACTION_ATTRIBUTES: bool;
+	var REPORT_EVENT_ACTION_STATUS: bool;
+	var DEFINE_EVENT_ENROLLMENT: bool;
+	var DELETE_EVENT_ENROLLMENT: bool;
+	var ALTER_EVENT_ENROLLMENT: bool;
+	var REPORT_EVENT_ENROLLMENT_STATUS: bool;
+	var GET_EVENT_ENROLLMENT_ATTRIBUTES: bool;
+	var ACKNOWLEDGE_EVENT_NOTIFICATION: bool;
+	var GET_ALARM_SUMMARY: bool;
+	var GET_ALARM_ENROLLMENT_SUMMARY: bool;
+	var READ_JOURNAL: bool;
+	var WRITE_JOURNAL: bool;
+	var INITIALIZE_JOURNAL: bool;
+	var REPORT_JOURNAL_STATUS: bool;
+	var CREATE_JOURNAL: bool;
+	var DELETE_JOURNAL: bool;
+	var GET_CAPABILITY_LIST: bool;
+	var FILE_OPEN: bool;
+	var FILE_READ: bool;
+	var FILE_CLOSE: bool;
+	var FILE_RENAME: bool;
+	var FILE_DELETE: bool;
+	var FILE_DIRECTORY: bool;
+	var UNSOLICITED_STATUS: bool;
+	var INFORMATION_REPORT: bool;
+	var EVENT_NOTIFICATION: bool;
+	var ATTACH_TO_EVENT_CONDITION: bool;
+	var ATTACH_TO_SEMAPHORE: bool;
+	var CONCLUDE: bool;
+	var CANCEL: bool;
+
+	: bitfield(8) {
+		bit1: 7;
+		bit2: 6;
+		bit3: 5;
+		bit4: 4;
+		bit5: 3;
+		bit6: 2;
+		bit7: 1;
+		bit8: 0;
+	}{
+		self.STATUS = $$.bit1==1;
+		self.GET_NAMELIST = $$.bit2==1;
+		self.IDENTIFY = $$.bit3==1;
+		self.RENAME = $$.bit4==1;
+		self.READ = $$.bit5==1;
+		self.WRITE = $$.bit6==1;
+		self.GET_VARIABLE_ACCESS_ATTRIBUTES = $$.bit7==1;
+		self.DEFINE_NAMED_VARIABLE = $$.bit8==1;
+	}
+
+	: bitfield(8) {
+		bit1: 7;
+		bit2: 6;
+		bit3: 5;
+		bit4: 4;
+		bit5: 3;
+		bit6: 2;
+		bit7: 1;
+		bit8: 0;
+	}{
+		self.DEFINE_SCATTERED_ACCESS = $$.bit1==1;
+		self.GET_SCATTERED_ACCESS_ATTRIBUTES = $$.bit2==1;
+		self.DELETE_VARIABLE_ACCESS = $$.bit3==1;
+		self.DEFINE_NAMED_VARIABLELIST = $$.bit4==1;
+		self.GET_NAMED_VARIABLELIST_ATTRIBUTES = $$.bit5==1;
+		self.DELETE_NAMED_VARIABLELIST = $$.bit6==1;
+		self.DEFINE_NAMED_TYPE = $$.bit7==1;
+		self.GET_NAMED_TYPE_ATTRIBUTES = $$.bit8==1;
+	}
+
+	: bitfield(8) {
+		bit1: 7;
+		bit2: 6;
+		bit3: 5;
+		bit4: 4;
+		bit5: 3;
+		bit6: 2;
+		bit7: 1;
+		bit8: 0;
+	}{
+		self.DELETE_NAMED_TYPE = $$.bit1==1;
+		self.INPUT = $$.bit2==1;
+		self.OUTPUT = $$.bit3==1;
+		self.TAKE_CONTROL = $$.bit4==1;
+		self.RELINQUISH_CONTROL = $$.bit5==1;
+		self.DEFINE_SEMAPHORE = $$.bit6==1;
+		self.DELETE_SEMAPHORE = $$.bit7==1;
+		self.REPORT_SEMAPHORE_STATUS = $$.bit8==1;
+	}
+
+	: bitfield(8) {
+		bit1: 7;
+		bit2: 6;
+		bit3: 5;
+		bit4: 4;
+		bit5: 3;
+		bit6: 2;
+		bit7: 1;
+		bit8: 0;
+	}{
+		self.REPORT_POOL_SEMAPHORE_STATUS = $$.bit1==1;
+		self.REPORT_SEMAPHORE_ENTRYSTATUS = $$.bit2==1;
+		self.INITIATE_DOWNLOAD_SEQUENCE = $$.bit3==1;
+		self.DOWNLOAD_SEGMENT = $$.bit4==1;
+		self.TERMINATE_DOWNLOAD_SEQUENCE = $$.bit5==1;
+		self.INITIATE_UPLOAD_SEQUENCE = $$.bit6==1;
+		self.UPLOAD_SEGMENT = $$.bit7==1;
+		self.TERMINATE_UPLOAD_SEQUENCE = $$.bit8==1;
+	}
+
+	field5: bitfield(8) {
+		bit1: 7;
+		bit2: 6;
+		bit3: 5;
+		bit4: 4;
+		bit5: 3;
+		bit6: 2;
+		bit7: 1;
+		bit8: 0;
+	}{
+		self.REQUEST_DOMAIN_DOWNLOAD = $$.bit1==1;
+		self.REQUEST_DOMAIN_UPLOAD = $$.bit2==1;
+		self.LOAD_DOMAIN_CONTENT = $$.bit3==1;
+		self.STORE_DOMAIN_CONTENT = $$.bit4==1;
+		self.DELETE_DOMAIN = $$.bit5==1;
+		self.GET_DOMAIN_ATTRIBUTES = $$.bit6==1;
+		self.CREATE_PROGRAM_INVOCATION = $$.bit7==1;
+		self.DELETE_PROGRAM_INVOCATION = $$.bit8==1;
+	}
+
+	: bitfield(8) {
+		bit1: 7;
+		bit2: 6;
+		bit3: 5;
+		bit4: 4;
+		bit5: 3;
+		bit6: 2;
+		bit7: 1;
+		bit8: 0;
+	}{
+		self.START = $$.bit1==1;
+		self.STOP = $$.bit2==1;
+		self.RESUME = $$.bit3==1;
+		self.RESET = $$.bit4==1;
+		self.KILL = $$.bit5==1;
+		self.GET_PROGRAM_INVOCATION_ATTRIBUTES = $$.bit6==1;
+		self.OBTAIN_FILE = $$.bit7==1;
+		self.DEFINE_EVENT_CONDITION = $$.bit8==1;
+	}
+
+	: bitfield(8) {
+		bit1: 7;
+		bit2: 6;
+		bit3: 5;
+		bit4: 4;
+		bit5: 3;
+		bit6: 2;
+		bit7: 1;
+		bit8: 0;
+	}{
+		self.DEFINE_EVENT_CONDITION = $$.bit1==1;
+		self.GET_EVENT_CONDITION_ATTRIBUTES = $$.bit2==1;
+		self.REPORT_EVENT_CONDITION_STATUS = $$.bit3==1;
+		self.ALTER_EVENT_CONDITION_MONITORING = $$.bit4==1;
+		self.TRIGGER_EVENT = $$.bit5==1;
+		self.DEFINE_EVENT_ACTION = $$.bit6==1;
+		self.DELETE_EVENT_ACTION = $$.bit7==1;
+		self.GET_EVENT_ACTION_ATTRIBUTES = $$.bit8==1;
+	}
+
+	: bitfield(8) {
+		bit1: 7;
+		bit2: 6;
+		bit3: 5;
+		bit4: 4;
+		bit5: 3;
+		bit6: 2;
+		bit7: 1;
+		bit8: 0;
+	}{
+		self.REPORT_EVENT_ACTION_STATUS = $$.bit1==1;
+		self.DEFINE_EVENT_ENROLLMENT = $$.bit2==1;
+		self.DELETE_EVENT_ENROLLMENT = $$.bit3==1;
+		self.ALTER_EVENT_ENROLLMENT = $$.bit4==1;
+		self.REPORT_EVENT_ENROLLMENT_STATUS = $$.bit5==1;
+		self.GET_EVENT_ENROLLMENT_ATTRIBUTES = $$.bit6==1;
+		self.ACKNOWLEDGE_EVENT_NOTIFICATION = $$.bit7==1;
+		self.GET_ALARM_SUMMARY = $$.bit8==1;
+	}
+
+	: bitfield(8) {
+		bit1: 7;
+		bit2: 6;
+		bit3: 5;
+		bit4: 4;
+		bit5: 3;
+		bit6: 2;
+		bit7: 1;
+		bit8: 0;
+	}{
+		self.GET_ALARM_ENROLLMENT_SUMMARY = $$.bit1==1;
+		self.READ_JOURNAL = $$.bit2==1;
+		self.WRITE_JOURNAL = $$.bit3==1;
+		self.INITIALIZE_JOURNAL = $$.bit4==1;
+		self.REPORT_JOURNAL_STATUS = $$.bit5==1;
+		self.CREATE_JOURNAL = $$.bit6==1;
+		self.DELETE_JOURNAL = $$.bit7==1;
+		self.GET_CAPABILITY_LIST = $$.bit8==1;
+	}
+
+	: bitfield(8) {
+		bit1: 7;
+		bit2: 6;
+		bit3: 5;
+		bit4: 4;
+		bit5: 3;
+		bit6: 2;
+		bit7: 1;
+		bit8: 0;
+	}{
+		self.FILE_OPEN = $$.bit1==1;
+		self.FILE_READ = $$.bit2==1;
+		self.FILE_CLOSE = $$.bit3==1;
+		self.FILE_RENAME = $$.bit4==1;
+		self.FILE_DELETE = $$.bit5==1;
+		self.FILE_DIRECTORY = $$.bit6==1;
+		self.UNSOLICITED_STATUS = $$.bit7==1;
+		self.INFORMATION_REPORT = $$.bit8==1;
+	}
+
+	: bitfield(8) {
+		bit1: 7;
+		bit2: 6;
+		bit3: 5;
+		bit4: 4;
+		bit5: 3;
+	}{
+		self.EVENT_NOTIFICATION = $$.bit1==1;
+		self.ATTACH_TO_EVENT_CONDITION = $$.bit2==1;
+		self.ATTACH_TO_SEMAPHORE = $$.bit3==1;
+		self.CONCLUDE = $$.bit4==1;
+		self.CANCEL = $$.bit5==1;
+	}
+
+};
+
+# MMS additional support options
+type ADDITIONAL_SUPPORT_OPTIONS = unit {
+
+	# Declaration
+	var VMD_STOP: bool;
+	var VMD_RESET: bool;
+	var SELECT: bool;
+	var ALTER_PROGRAM_INVOCATION_ATTRIBUTES: bool;
+	var INITIATE_UNIT_CONTROL_LOAD: bool;
+	var UNIT_CONTROL_LOAD_SEGMENT: bool;
+	var UNIT_CONTROL_UPLOAD: bool;
+	var START_UNIT_CONTROL: bool;
+	var STOP_UNIT_CONTROL: bool;
+	var CREATE_UNIT_CONTROL: bool;
+	var ADDTO_UNIT_CONTROL: bool;
+	var REMOVEFROM_UNIT_CONTROL: bool;
+	var GET_UNIT_CONTROL_ATTRIBUTES: bool;
+	var LOAD_UNIT_CONTROL_FROM_FILE: bool;
+	var STORE_UNIT_CONTROL_TO_FILE: bool;
+	var DELETE_UNIT_CONTROL: bool;
+	var DEFINE_EVENT_CONDITION_LIST: bool;
+	var DELETE_EVENT_CONDITION_LIST: bool;
+	var ADD_EVENT_CONDITION_LIST_REFERENCE: bool;
+	var REMOVE_EVENT_CONDITION_LIST_REFERENCE: bool;
+	var GET_EVENT_CONDITION_LIST_ATTRIBUTES: bool;
+	var REPORT_EVENT_CONDITION_LIST_STATUS: bool;
+	var ALTER_EVENT_CONDITION_LIST_MONITORING: bool;
+
+	: bitfield(8) {
+		bit1: 7;
+		bit2: 6;
+		bit3: 5;
+		bit4: 4;
+		bit5: 3;
+		bit6: 2;
+		bit7: 1;
+		bit8: 0;
+	}{
+		self.VMD_STOP = $$.bit1==1;
+		self.VMD_RESET = $$.bit2==1;
+		self.SELECT = $$.bit3==1;
+		self.ALTER_PROGRAM_INVOCATION_ATTRIBUTES = $$.bit4==1;
+		self.INITIATE_UNIT_CONTROL_LOAD = $$.bit5==1;
+		self.UNIT_CONTROL_LOAD_SEGMENT = $$.bit6==1;
+		self.UNIT_CONTROL_UPLOAD = $$.bit7==1;
+		self.START_UNIT_CONTROL = $$.bit8==1;
+	}
+
+	: bitfield(8) {
+		bit1: 7;
+		bit2: 6;
+		bit3: 5;
+		bit4: 4;
+		bit5: 3;
+		bit6: 2;
+		bit7: 1;
+		bit8: 0;
+	}{
+		self.STOP_UNIT_CONTROL = $$.bit1==1;
+		self.CREATE_UNIT_CONTROL = $$.bit2==1;
+		self.ADDTO_UNIT_CONTROL = $$.bit3==1;
+		self.REMOVEFROM_UNIT_CONTROL = $$.bit4==1;
+		self.GET_UNIT_CONTROL_ATTRIBUTES = $$.bit5==1;
+		self.LOAD_UNIT_CONTROL_FROM_FILE = $$.bit6==1;
+		self.STORE_UNIT_CONTROL_TO_FILE = $$.bit7==1;
+		self.DELETE_UNIT_CONTROL = $$.bit8==1;
+	}
+
+	: bitfield(8) {
+		bit1: 7;
+		bit2: 6;
+		bit3: 5;
+		bit4: 4;
+		bit5: 3;
+		bit6: 2;
+		bit7: 1;
+	}{
+		self.DEFINE_EVENT_CONDITION_LIST = $$.bit1==1;
+		self.DELETE_EVENT_CONDITION_LIST = $$.bit2==1;
+		self.ADD_EVENT_CONDITION_LIST_REFERENCE = $$.bit3==1;
+		self.REMOVE_EVENT_CONDITION_LIST_REFERENCE = $$.bit4==1;
+		self.GET_EVENT_CONDITION_LIST_ATTRIBUTES = $$.bit5==1;
+		self.REPORT_EVENT_CONDITION_LIST_STATUS = $$.bit6==1;
+		self.ALTER_EVENT_CONDITION_LIST_MONITORING = $$.bit7==1;
+	}
+
+};
+
+# X.690 OSI networking and system aspects – Abstract Syntax Notation One (ASN.1): 8.1.2 Identifier octets #############
+type ID = unit {
+
+	# Declaration
+	var tag: int32;
+	var class: ASN1::ASN1Class;
+	var constructed: bool;
+
+	# Get ASN.1 tag information from leading octet
+	: bitfield(8) {
+		tag: 0..4;
+		constructed: 5;
+		class: 6..7;
+	} {
+		self.tag = $$.tag;
+		self.class = ASN1::ASN1Class($$.class);
+		self.constructed = cast<bool>($$.constructed);
+	}
+
+	# Get ASN.1 tag information from subsequent octet
+	: bitfield(8) {
+		tag: 0..6;
+		flag: 7;
+	} if ( self.tag == 31 ) {
+		self.tag = $$.tag;
+	}
+
+};

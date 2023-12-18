@@ -1,0 +1,1783 @@
+# Copyright 2023 DINA-Community. See LICENSE for details.
+
+##
+## IEC 60870-5-104: network access for IEC 60870-5-101 using standard transport profiles
+##
+module IEC60870_5_104;
+
+import spicy;
+
+# IEC 60870-5-104:2006, 6 ASDU types, Tables 1-6 #######################################################################
+type asdu_type = enum {
+	M_SP_NA_1 = 1,
+	M_DP_NA_1 = 3,
+	M_ST_NA_1 = 5,
+	M_BO_NA_1 = 7,
+	M_ME_NA_1 = 9,
+	M_ME_NB_1 = 11,
+	M_ME_NC_1 = 13,
+	M_IT_NA_1 = 15,
+	M_PS_NA_1 = 20,
+	M_ME_ND_1 = 21,
+	M_SP_TB_1 = 30,
+	M_DP_TB_1 = 31,
+	M_ST_TB_1 = 32,
+	M_BO_TB_1 = 33,
+	M_ME_TD_1 = 34,
+	M_ME_TE_1 = 35,
+	M_ME_TF_1 = 36,
+	M_IT_TB_1 = 37,
+	M_EP_TD_1 = 38,
+	M_EP_TE_1 = 39,
+	M_EP_TF_1 = 40,
+	C_SC_NA_1 = 45,
+	C_DC_NA_1 = 46,
+	C_RC_NA_1 = 47,
+	C_SE_NA_1 = 48,
+	C_SE_NB_1 = 49,
+	C_SE_NC_1 = 50,
+	C_BO_NA_1 = 51,
+	C_SC_TA_1 = 58,
+	C_DC_TA_1 = 59,
+	C_RC_TA_1 = 60,
+	C_SE_TA_1 = 61,
+	C_SE_TB_1 = 62,
+	C_SE_TC_1 = 63,
+	C_BO_TA_1 = 64,
+	M_EI_NA_1 = 70,
+	C_IC_NA_1 = 100,
+	C_CI_NA_1 = 101,
+	C_RD_NA_1 = 102,
+	C_CS_NA_1 = 103,
+	C_TS_NA_1 = 104,
+	C_RP_NA_1 = 105,
+	C_CD_NA_1 = 106,
+	C_TS_TA_1 = 107,
+	P_ME_NA_1 = 110,
+	P_ME_NB_1 = 111,
+	P_ME_NC_1 = 112,
+	P_AC_NA_1 = 113,
+	F_FR_NA_1 = 120,
+	F_SR_NA_1 = 121,
+	F_SC_NA_1 = 122,
+	F_LS_NA_1 = 123,
+	F_AF_NA_1 = 124,
+	F_SG_NA_1 = 125,
+	F_DR_TA_1 = 126,
+};
+
+public type APDUs = unit {
+	apdus: APDU[];
+};
+
+type APDU = unit {
+
+	# Declarations
+	var asdu_length: uint8;
+	var apdu_type: string;
+	var send_num: uint32;
+	var rec_num: uint32;
+
+	# APDU start byte
+	start: uint8;
+
+	# Get APDU and ASDU length
+	length: uint8 {
+		self.asdu_length = $$-4;
+	}
+
+	# Get APDU type, send and receive numbers  from APCI control fields
+	ctlfields: bitfield(32) {
+		bit1: 0;
+		bit2: 1;
+		bit3: 2;
+		bit4: 3;
+		bit5: 4;
+		bit6: 5;
+		bit7: 6;
+		bit8: 7;
+		bit2_16: 1..15;
+		bit17: 16;
+		bit18_32: 17..31;
+	} &byte-order=spicy::ByteOrder::Little {
+		if ( $$.bit1 == 1 && $$.bit2 == 1 && $$.bit7 == 1){
+			self.apdu_type = "TESTFR (act)";
+		}
+		if ( $$.bit1 == 1 && $$.bit2 == 1 && $$.bit8 == 1){
+			self.apdu_type = "TESTFR (con)";
+		}
+		if ( $$.bit1 == 1 && $$.bit2 == 1 && $$.bit3 == 1){
+			self.apdu_type = "STARTDT (act)";
+		}
+		if ( $$.bit1 == 1 && $$.bit2 == 1 && $$.bit4 == 1){
+			self.apdu_type = "STARTDT (con)";
+		}
+		if ( $$.bit1 == 1 && $$.bit2 == 1 && $$.bit5 == 1){
+			self.apdu_type = "STOPDT (act)";
+		}
+		if ( $$.bit1 == 1 && $$.bit2 == 1 && $$.bit6 == 1){
+			self.apdu_type = "STOPDT (con)";
+		}
+		if ( $$.bit1 == 0){
+			self.apdu_type = "I";
+			self.send_num = self.ctlfields.bit2_16;
+			self.rec_num = self.ctlfields.bit18_32;
+		}
+		if ( $$.bit1 == 1 && $$.bit2 == 0){
+			self.apdu_type = "S";
+			self.rec_num = self.ctlfields.bit18_32;
+		}
+	}
+
+	# Parse ASDU
+	asdu: ASDU(self.asdu_length) if ( self.apdu_type == "I" );
+
+};
+
+type ASDU = unit (asdu_length: uint8) {
+
+	# Declarations
+	var sq: bool;
+	var ioa_num: uint32;
+	var test: bool;
+	var con: bool;
+	var cot: uint32;	
+
+	# ASDU message ID
+	asdu_id: uint8;
+
+	# Get sequence type and number of IOAs from variable struct identifier
+	: bitfield(8) {
+		ioa_bits: 0..6;
+		sq_bit: 7;
+	}{
+		self.sq = $$.sq_bit==1;
+		self.ioa_num = $$.ioa_bits;
+	}
+
+	# Get test flag, confirm flag and cause of transmission from cause of transmission field
+	: bitfield(8) {
+		cot_bits: 0..5;
+		con_bit: 6;
+		test_bit: 7;
+	}{
+		self.test = $$.test_bit == 1;
+		self.con = $$.con_bit == 1;
+		self.cot = $$.cot_bits;
+	}
+
+	# Originator address
+	origin: uint8;
+
+	# ASDU address
+	asdu_address: uint16 &byte-order=spicy::ByteOrder::Little;
+
+	# Get information objects
+	switch ( self.sq ){
+		False -> {
+			io: IO(self.asdu_id, self.sq, 1)[self.ioa_num] if ( asdu_type(self.asdu_id) != asdu_type::Undef);
+			data: bytes &size=asdu_length-6 if ( asdu_type(self.asdu_id) == asdu_type::Undef);
+		}
+		True -> {
+			io: IO(self.asdu_id, self.sq, self.ioa_num)[1] if ( asdu_type(self.asdu_id) != asdu_type::Undef);
+			data: bytes &size=asdu_length-6 if ( asdu_type(self.asdu_id) == asdu_type::Undef);
+		}
+	};
+	
+};
+
+type IO = unit (asdu_id: uint8, sq: bool, ioa_num: uint32) {
+
+	# IO address (IOA)
+	address: bytes &size=3 &convert=$$.to_uint(spicy::ByteOrder::Little);
+
+	# Information elements (IE)
+	switch ( sq ){
+		False -> ie: IE(asdu_id)[1];
+		True -> ie: IE(asdu_id)[ioa_num];
+	};
+
+};
+
+type IE = unit (asdu_id: uint8) {
+
+	switch ( asdu_type(asdu_id) ){
+
+		# Get single-point information (M_SP_NA_1)
+		asdu_type::M_SP_NA_1 -> {
+
+			# Single-point information with quality descriptor (SIQ)
+			siq: SIQ;
+
+		}
+
+		# Get double-point information (M_DP_NA_1)
+		asdu_type::M_DP_NA_1 -> {
+
+			# Double-point information with quality descriptor (DIQ)
+			diq: DIQ;
+
+		}
+
+		# Get step position information (M_ST_NA_1)
+		asdu_type::M_ST_NA_1  -> {
+
+			# Value with transient state indication (VTI)
+			vti: VTI;
+
+			# Quality descriptor (QDS)
+			qds: QDS;
+
+		}
+
+		# Get bitstring of 32 bit (M_BO_NA_1) --> not tested!
+		asdu_type::M_BO_NA_1 -> {
+
+			# Bit string (BSI)
+			bsi: BSI;
+
+			# Quality descriptor (QDS)
+			qds: QDS;
+
+		}
+
+		# Get measured value, normalized value (M_ME_NA_1)
+		asdu_type::M_ME_NA_1 -> {
+
+			# Normalized value (NVA)
+			nva: NVA;
+
+			# Quality descriptor (QDS)
+			qds: QDS;
+
+		}
+
+		# Get measured value, scaled value (M_ME_NB_1)
+		asdu_type::M_ME_NB_1 -> {
+
+			# Scaled value (SVA)
+			sva: SVA;
+
+			# Quality descriptor (QDS)
+			qds: QDS;
+
+		}
+
+		# Get measured value, short floating point number (M_ME_NC_1)
+		asdu_type::M_ME_NC_1  -> {
+
+			# Short floating point number (IEEE STD 754)
+			shortfloat: ShortFloat;
+
+			# Quality descriptor (QDS)
+			qds: QDS;
+
+		}
+
+		# Get integrated totals (M_IT_NA_1) --> not tested!
+		asdu_type::M_IT_NA_1 -> {
+
+			# Binary counter reading (BCR)
+			bcr: BCR;
+
+		}
+
+		# Get packed single-point information with status change detection (M_PS_NA_1) --> not tested!
+		asdu_type::M_PS_NA_1 -> {
+
+			# Status and status change detection (SCD)
+			scd: SCD;
+
+			# Quality descriptor (QDS)
+			qds: QDS;
+
+		}
+
+		# Get measured value, normalized value without quality descriptor (M_ME_ND_1) --> not tested!
+		asdu_type::M_ME_ND_1 -> {
+
+			# Normalized value (NVA)
+			nva: NVA;
+
+		}
+
+		# Get single-point information with time tag CP56Time2a (M_SP_TB_1)
+		asdu_type::M_SP_TB_1 -> {
+
+			# Single-point information with quality descriptor (SIQ)
+			siq: SIQ;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get double-point information with time tag CP56Time2a (M_DP_TB_1)
+		asdu_type::M_DP_TB_1 -> {
+
+			# Double-point information with quality descriptor (DIQ)
+			diq: DIQ;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get step position information with time tag CP56Time2a (M_ST_TB_1)
+		asdu_type::M_ST_TB_1 -> {
+
+			# Value with transient state indication (VTI)
+			vti: VTI;
+
+			# Quality descriptor (QDS)
+			qds: QDS;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get bitstring of 32 bits with time tag CP56Time2a (M_BO_TB_1) --> not tested!
+		asdu_type::M_BO_TB_1 -> {
+
+			# Bit string (BSI)
+			bsi: BSI;
+
+			# Quality descriptor (QDS)
+			qds: QDS;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get measured value, normalized value with time tag CP56Time2a (M_ME_TD_1)
+		asdu_type::M_ME_TD_1 -> {
+
+			# Normalized value (NVA)
+			nva: NVA;
+
+			# Quality descriptor (QDS)
+			qds: QDS;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get measured value, scaled value with time tag CP56Time2a (M_ME_TE_1)
+		asdu_type::M_ME_TE_1 -> {
+
+			# Scaled value (SVA)
+			sva: SVA;
+
+			# Quality descriptor (QDS)
+			qds: QDS;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get measured value, short floating point number with time tag CP56Time2a (M_ME_TF_1)
+		asdu_type::M_ME_TF_1 -> {
+
+			# Short floating point number (IEEE STD 754)
+			shortfloat: ShortFloat;
+
+			# Quality descriptor (QDS)
+			qds: QDS;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get integrated totals with time tag CP56Time2a (M_IT_TB_1) --> not tested!
+		asdu_type::M_IT_TB_1 -> {
+
+			# Binary counter reading (BCR)
+			bcr: BCR;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get event of protection equipment with time tag CP56Time2a (M_EP_TD_1) --> not tested!
+		asdu_type::M_EP_TD_1 -> {
+
+			# Single event of protection equipment (SEP)
+			sep: SEP;
+
+			# CP16Time2a
+			cp16time: CP16Time2a;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get packed start events of protection equipment with time tag CP56Time2a (M_EP_TE_1) --> not tested!
+		asdu_type::M_EP_TE_1 -> {
+
+			# Start events of protection equipment (SPE)
+			spe: SPE;
+
+			# Quality descriptor for events of protection equipment (QDP)
+			qdp: QDP;
+
+			# CP16Time2a
+			cp16time: CP16Time2a;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get Packed output circuit information of protection equipment with time tag CP56Time2a (M_EP_TF_1) --> not tested!
+		asdu_type::M_EP_TF_1 -> {
+
+			# Output circuit information of protection equipment (OCI)
+			oci: OCI;
+
+			# Quality descriptor for events of protection equipment (QDP)
+			qdp: QDP;
+
+			# CP16Time2a
+			cp16time: CP16Time2a;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get single command (C_SC_NA_1) --> not tested!
+		asdu_type::C_SC_NA_1 -> {
+
+			# Single command object (SCO)
+			sco: SCO;
+
+		}
+
+		# Get double command (C_DC_NA_1) --> not tested!
+		asdu_type::C_DC_NA_1 -> {
+
+			# Double command object (SCO)
+			dco: DCO;
+
+		}
+
+		# Get regulating step command (C_RC_NA_1) --> not tested!
+		asdu_type::C_RC_NA_1 -> {
+
+			# Regulating step command (RCO)
+			rco: RCO;
+
+		}
+
+		# Get set-point command, normalized value (C_SE_NA_1) --> not tested!
+		asdu_type::C_SE_NA_1 -> {
+
+			# Normalized value (NVA)
+			nva: NVA;
+
+			# Qualifier of set-point command (QOS)
+			qos: QOS;
+
+		}
+
+		# Get Set-point command, scaled value (C_SE_NB_1) --> not tested!
+		asdu_type::C_SE_NB_1 -> {
+
+			# Scaled value (SVA)
+			sva: SVA;
+
+			# Qualifier of set-point command (QOS)
+			qos: QOS;
+
+		}
+
+		# Get set-point command, short floating point number (C_SE_NC_1) --> not tested!
+		asdu_type::C_SE_NC_1 -> {
+
+			# Short floating point number (IEEE STD 754)
+			shortfloat: ShortFloat;
+
+			# Qualifier of set-point command (QOS)
+			qos: QOS;
+
+		}
+
+		# Get Bitstring of 32 bit (C_BO_NA_1) --> not tested!
+		asdu_type::C_BO_NA_1 -> {
+
+			# Bit string (BSI)
+			bsi: BSI;
+
+		}
+
+		# Get single command with CP56Time2a time tag (C_SC_TA_1) --> not tested!
+		asdu_type::C_SC_TA_1 -> {
+
+			# Single command object (SCO)
+			sco: SCO;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get double command with CP56Time2a time tag (C_DC_TA_1) --> not tested!
+		asdu_type::C_DC_TA_1 -> {
+
+			# Double command object (SCO)
+			dco: DCO;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get regulating step command with CP56Time2a time tag (C_RC_TA_1) --> not tested!
+		asdu_type::C_RC_TA_1  -> {
+
+			# Regulating step command (RCO)
+			rco: RCO;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get set-point command, normalized value with CP56Time2a time tag (C_SE_TA_1) --> not tested!
+		asdu_type::C_SE_TA_1 -> {
+
+			# Normalized value (NVA)
+			nva: NVA;
+
+			# Qualifier of set-point command (QOS)
+			qos: QOS;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get set-point command, scaled value with CP56Time2a time tag (C_SE_TB_1) --> not tested!
+		asdu_type::C_SE_TB_1 -> {
+
+			# Scaled value (SVA)
+			sva: SVA;
+
+			# Qualifier of set-point command (QOS)
+			qos: QOS;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get set-point command, short floating point number with CP56Time2a time tag (C_SE_TC_1) --> not tested!
+		asdu_type::C_SE_TC_1 -> {
+
+			# Short floating point number (IEEE STD 754)
+			shortfloat: ShortFloat;
+
+			# Qualifier of set-point command (QOS)
+			qos: QOS;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get bitstring of 32 bits with CP56Time2a time tag (C_BO_TA_1) --> not tested!
+		asdu_type::C_BO_TA_1 -> {
+
+			# Bit string (BSI)
+			bsi: BSI;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# End of initialization (M_EI_NA_1)
+		asdu_type::M_EI_NA_1 -> {
+
+			# Cause of initialization (COI)
+			coi: COI;
+
+		}
+
+		# Get interrogation command (C_IC_NA_1)
+		asdu_type::C_IC_NA_1 -> {
+
+			# Qualifier of interrogation command (QOI)
+			qoi: QOI;
+
+		}
+
+		# Get counter interrogation command (C_CI_NA_1)
+		asdu_type::C_CI_NA_1 -> {
+
+			# Qualifier of counter interrogation command (QCC)
+			qcc: QCC;
+
+		}
+
+		# Get read command (C_RD_NA_1) --> not tested!
+		asdu_type::C_RD_NA_1 -> {
+			var read_cmd: bool = True;
+		}
+
+		# Get clock synchronization command (C_CS_NA_1) --> not tested!
+		asdu_type::C_CS_NA_1 -> {
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get test command (C_TS_NA_1) --> not tested!
+		asdu_type::C_TS_NA_1 -> {
+
+			# Fixed test bit pattern
+			fbp: FBP;
+
+		}
+
+		# Get reset process command (C_RP_NA_1) --> not tested!
+		asdu_type::C_RP_NA_1 -> {
+
+			# Qualifier of reset process command
+			qrp: QRP;
+
+		}
+
+		# Get delay acquisition command (C_CD_NA_1) --> not tested!
+		asdu_type::C_CD_NA_1 -> {
+
+			# CP16Time2a
+			cp16time: CP16Time2a;
+
+		}
+
+		# Get test command with CP56Time2a time tag (C_TS_TA_1) --> not tested!
+		asdu_type::C_TS_TA_1 -> {
+
+			# Test command counter
+			tsc: int16;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get parameter of measured values, normalized value (P_ME_NA_1) --> not tested!
+		asdu_type::P_ME_NA_1 -> {
+
+			# Normalized value (NVA)
+			nva: NVA;
+
+			# Qualifier of parameter of measured values (QPM)
+			qpm: QPM;
+
+		}
+
+		# Get parameter of measured values, scaled value (P_ME_NB_1) --> not tested!
+		asdu_type::P_ME_NB_1 -> {
+
+			# Scaled value (SVA)
+			sva: SVA;
+
+			# Qualifier of parameter of measured values (QPM)
+			qpm: QPM;
+
+		}
+
+		# Get parameter of measured values, short floating point number (P_ME_NC_1) --> not tested!
+		asdu_type::P_ME_NC_1 -> {
+			
+			# Short floating point number (IEEE STD 754)
+			shortfloat: ShortFloat;
+
+			# Qualifier of parameter of measured values (QPM)
+			qpm: QPM;
+
+		}
+
+		# Get parameter activation (P_AC_NA_1) --> not tested!
+		asdu_type::P_AC_NA_1 -> {
+
+			# Qualifier of parameter activation (QPA)
+			qpa: QPA;
+
+		}
+
+		# Get file ready (F_FR_NA_1) --> not tested
+		asdu_type::F_FR_NA_1 -> {
+
+			# Name of file (NOF)
+			nof: NOF;
+
+			# Length of file (LOF)
+			lof: bytes &size=3;
+
+			# File ready qualifier (FRQ)
+			frq: FRQ;
+
+		}
+
+		# Get section ready (F_SR_NA_1) --> not tested
+		asdu_type::F_SR_NA_1 -> {
+
+			# Name of file (NOF)
+			nof: NOF;
+
+			# Name of section (NOS)
+			nos: NOS;
+
+			# Length of section (LOS)
+			los: LOS;
+
+			# Section ready qualifier (SRQ)
+			srq: SRQ;
+
+		}
+
+		# Get call directory, select file, call file, call section (F_SC_NA_1) --> not tested
+		asdu_type::F_SC_NA_1 -> {
+
+			# Name of file (NOF)
+			nof: NOF;
+
+			# Name of section (NOS)
+			nos: NOS;
+
+			# Select and call qualifier (SCQ)
+			scq: SCQ;
+
+		}
+
+		# Get last section, last segment (F_LS_NA_1) --> not tested
+		asdu_type::F_LS_NA_1 -> {
+
+			# Name of file (NOF)
+			nof: NOF;
+
+			# Name of section (NOS)
+			nos: NOS;
+
+			# Last section or segment qualifier (LSQ)
+			lsq: LSQ;
+
+			# Checksum (CHS)
+			chs: uint8;
+
+		}
+
+		# Get ACK file, ACK section (F_AF_NA_1) --> not tested
+		asdu_type::F_AF_NA_1 -> {
+
+			# Name of file (NOF)
+			nof: NOF;
+
+			# Name of section (NOS)
+			nos: NOS;
+
+			# Acknowledge file or section qualifier (AFQ)
+			afq: AFQ;
+
+		}
+
+		# Get directory (F_DR_TA_1) --> not tested
+		asdu_type::F_DR_TA_1 -> {
+
+			# Name of file (NOF)
+			nof: NOF;
+
+			# Length of file (LOF)
+			lof: bytes &size=3;
+
+			# Status of file (SOF)
+			sof: SOF;
+
+			# CP56Time2a
+			cp56time: CP56Time2a;
+
+		}
+
+		# Get segment (F_SG_NA_1) --> not tested
+		asdu_type::F_SG_NA_1 -> {
+
+			# Name of file (NOF)
+			nof: NOF;
+
+			# Name of section (NOS)
+			nos: NOS;
+
+			# Length of section (LOS)
+			los: LOS;
+
+			# Segment
+			segment: bytes &eod;
+
+		}
+
+		# Default
+		* -> data: bytes &eod;
+
+	};
+
+	on %done { print(self); }
+
+};
+
+
+# IEC 60870-5-101:2003, 7.2.6.32 Acknowledge file or section qualifier #################################################
+type AFQ = unit{
+
+	# Declarations
+	var status: string="UNKNOWN";
+	var status_change: string="UNKNOWN";
+
+	# Status and status change flags
+	: bitfield(16) {
+		st_bits: 0..3;
+		cd_bits: 4..7;
+	}{
+		if ( $$.st_bits == 0 ){
+			self.status = "DEFAULT";
+		}
+		if ( $$.st_bits == 1 ){
+			self.status = "FILE_TRANSFER_POS";
+		}
+		if ( $$.st_bits == 2 ){
+			self.status = "FILE_TRANSFER_NEG";
+		}
+		if ( $$.st_bits == 3 ){
+			self.status = "SECTION_TRANSFER_POS";
+		}
+		if ( $$.st_bits == 4 ){
+			self.status = "SECTION_TRANSFER_NEG";
+		}
+		if ( $$.cd_bits == 0 ){
+			self.status_change = "DEFAULT";
+		}
+		if ( $$.cd_bits == 1 ){
+			self.status_change = "NOT_AVAILABLE";
+		}
+		if ( $$.cd_bits == 2 ){
+			self.status_change = "FAILED_CHK";
+		}
+		if ( $$.cd_bits == 3 ){
+			self.status_change = "UNEXPECTED_SERVICE";
+		}
+		if ( $$.cd_bits == 4 ){
+			self.status_change = "UNEXPECTED_FILE";
+		}
+		if ( $$.cd_bits == 5 ){
+			self.status_change = "UNEXPECTED_SECTION";
+		}
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.9 Binary counter reading #################################################################
+type BCR = unit{
+
+	# Declarations
+	var seqnum: uint8;
+	var carry: bool=False;
+	var adjusted: bool=False;
+	var valid: bool=False;
+
+	# Counter reading
+	counterread: int32 &byte-order=spicy::ByteOrder::Little;
+
+	# Get sequence identification flags
+	: bitfield(8) {
+		seqnum_bits: 0..4;
+		carry_bit: 5;
+		adjusted_bit: 6;
+		valid_bit: 7;
+	}{
+		self.seqnum = $$.seqnum_bits;
+		self.carry = $$.carry_bit == 1;
+		self.adjusted = $$.adjusted_bit == 1;
+		self.valid = $$.valid_bit == 0;
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.13  Bit string of 32 bit #################################################################
+type BSI = unit{
+
+	# Bit string
+	bits: bytes &size=4;
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.21 Cause of initialization ###############################################################
+type COI = unit {
+
+	# Declarations
+	var localpoweron: bool=False;
+	var localmanualreset: bool=False;
+	var remotereset: bool=False;
+	var unchangedparams: bool;
+
+	# Get cause of initialization (COI) flags
+	: bitfield(8) {
+		bit1_7: 0..6;
+		bit8: 7;
+	}{
+		if ( $$.bit1_7 == 0 ) {
+			self.localpoweron = True;
+		}
+		if ( $$.bit1_7 == 1 ) {
+			self.localmanualreset = True;
+		}
+		if ( $$.bit1_7 == 2 ) {
+			self.remotereset = True;
+		}
+		self.unchangedparams = $$.bit8 == 0;
+	}
+
+};
+
+
+# IEC 60870-5-101:2003, 7.2.6.16 Double command ########################################################################
+type DCO = unit{
+
+	# Declarations
+	var state_on: bool=False;
+	var state_off: bool=False;
+	var indeterminate0: bool=False;
+	var indeterminate3: bool=False;
+	var shortpulse: bool=False;
+	var longpulse: bool=False;
+	var persistent: bool=False;
+	var execute: bool;
+	var select: bool;
+
+	# Get double command (DCO) descriptor flags
+	: bitfield(8) {
+		state_bits: 0..1;
+		pulse_bits: 2..6;
+		op_bit: 7;
+	}{
+		if ( $$.state_bits == 0 ) {
+			self.indeterminate0 = True;
+		}
+		if ( $$.state_bits == 1 ) {
+			self.state_off = True;
+		}
+		if ( $$.state_bits == 2 ) {
+			self.state_on = True;
+		}
+		if ( $$.state_bits == 3 ) {
+			self.indeterminate3 = True;
+		}
+		if ( $$.pulse_bits == 1 ) {
+			self.shortpulse = True;
+		}
+		if ( $$.pulse_bits == 2 ) {
+			self.longpulse = True;
+		}
+		if ( $$.pulse_bits == 3 ) {
+			self.persistent = True;
+		}
+		self.execute = $$.op_bit==0;
+		self.select = $$.op_bit==1;
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.2 Double-point information with quality descriptor #######################################
+type DIQ = unit{
+
+	# Declarations
+	var state_on: bool=False;
+	var state_off: bool=False;
+	var indeterminate0: bool=False;
+	var indeterminate3: bool=False;
+	var blocked: bool;
+	var substituted: bool;
+	var topical: bool;
+	var valid: bool;
+
+	# Get double-point information (DIQ) with quality descriptor flags
+	: bitfield(8) {
+		state_bits: 0..1;
+		blocked_bit: 4;
+		substituted_bit: 5;
+		topical_bit: 6;
+		valid_bit: 7;
+	}{
+		if ( $$.state_bits == 0 ) {
+			self.indeterminate0 = True;
+		}
+		if ( $$.state_bits == 1 ) {
+			self.state_off = True;
+		}
+		if ( $$.state_bits == 2 ) {
+			self.state_on = True;
+		}
+		if ( $$.state_bits == 3 ) {
+			self.indeterminate3 = True;
+		}
+		self.blocked = $$.blocked_bit==1;
+		self.substituted = $$.substituted_bit==1;
+		self.topical = $$.topical_bit==0;
+		self.valid = $$.valid_bit==0;
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.14  Fixed test bit pattern ###############################################################
+type FBP = unit{
+
+	# Fixed test bit pattern
+	bits: bytes &size=2;
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.28 File ready qualifier ##################################################################
+type FRQ = unit{
+
+	# Declarations
+	var conf: bool;
+
+	# Get file ready qualifier (FRQ) flags
+	: bitfield(8) {
+		conf_bit: 7;
+	}{
+		self.conf = $$.conf_bit==0;
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.36 Length of segment ######################################################################
+type LOS = unit{
+
+	# Declarations
+	var size: uint8;
+
+	# Get length of segment (LOS)
+	: bitfield(8) {
+		size: 1..7;
+	};
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.31 Last section or segment qualifier #####################################################
+type LSQ = unit{
+
+	# Declarations
+	var lsq: string="UNKNOWN";
+
+	# Get last section or segment qualifier (LSQ) flags
+	: bitfield(8) {
+		lsq_bits: 0..4;
+	}{
+		if ( $$.lsq_bits==0 ){
+			self.lsq = "UNUSED";
+		}
+		if ( $$.lsq_bits==1 ){
+			self.lsq = "FILE_TRANSFER";
+		}
+		if ( $$.lsq_bits==2 ){
+			self.lsq = "FILE_TRANSFER_ABORT";
+		}
+		if ( $$.lsq_bits==3 ){
+			self.lsq = "SECTION_TRANSFER";
+		}
+		if ( $$.lsq_bits==4 ){
+			self.lsq = "SECTION_TRANSFER_ABORT";
+		}
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.33 Name of file ##########################################################################
+type NOF = unit{
+
+	# Declarations
+	var name: int16;
+
+	# Get name of file (NOF)
+	: bitfield(16) {
+		name: 1..15;
+	};
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.34  Name of section #######################################################################
+type NOS = unit{
+
+	# Declarations
+	var name: int8;
+
+	# Get name of section (NOS)
+	: bitfield(8) {
+		name: 1..7;
+	};
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.6 Normalized value #######################################################################
+type NVA = unit{
+
+	# Normalized value
+	nva: int16 &byte-order=spicy::ByteOrder::Little;
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.12 Output circuit information of protection equipment ####################################
+type OCI = unit{
+
+	# Declarations
+	var gc: bool;
+	var cl1: bool;
+	var cl2: bool;
+	var cl3: bool;
+
+	# Get output circuit information of protection equipment (OCI) flags
+	: bitfield(8) {
+		gc_bit: 0;
+		cl1_bit: 1;
+		cl2_bit: 2;
+		cl3_bit: 3;
+	}{
+		self.gc = $$.gc_bit == 1;
+		self.cl1 = $$.cl1_bit == 1;
+		self.cl2 = $$.cl2_bit == 1;
+		self.cl3 = $$.cl3_bit == 1;
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.23 Qualifier of counter interrogation command ############################################
+type QCC = unit{
+
+	# Declarations
+	var nocounter: bool=False;
+	var group1counter: bool=False;
+	var group2counter: bool=False;
+	var group3counter: bool=False;
+	var group4counter: bool=False;
+	var generalcounter: bool=False;
+	var readonly: bool=False;
+	var freeze: bool=False;
+	var reset: bool=False;
+	var freezeandreset: bool=False;
+
+	# Get qualifier of counter interrogation (QCC) command flags
+	: bitfield(8) {
+		counter_bits: 0..5;
+		mode_bits: 6..7;
+	}{
+		if ( $$.counter_bits == 0 ) {
+			self.nocounter = True;
+		}
+		if ( $$.counter_bits == 1 ) {
+			self.group1counter = True;
+		}
+		if ( $$.counter_bits == 2 ) {
+			self.group2counter = True;
+		}
+		if ( $$.counter_bits == 3 ) {
+			self.group3counter = True;
+		}
+		if ( $$.counter_bits == 4 ) {
+			self.group4counter = True;
+		}
+		if ( $$.counter_bits == 5 ) {
+			self.generalcounter = True;
+		}
+		if ( $$.mode_bits == 0 ) {
+			self.readonly = True;
+		}
+		if ( $$.mode_bits == 1 ) {
+			self.freeze = True;
+		}
+		if ( $$.mode_bits == 2 ) {
+			self.freezeandreset = True;
+		}
+		if ( $$.mode_bits == 3 ) {
+			self.reset = True;
+		}
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.4 Quality descriptor for events of protection equipment (separate object) ################
+type QDP = unit{
+
+	# Declarations
+	var elapsed: bool;
+	var blocked: bool;
+	var substituted: bool;
+	var topical: bool;
+	var valid: bool;
+
+	# Get quality descriptor (QDS) flags
+	: bitfield(8) {
+		elapsed_bit: 3;
+		blocked_bit: 4;
+		substituted_bit: 5;
+		topical_bit: 6;
+		valid_bit: 7;
+	}{
+		self.elapsed = $$.elapsed_bit == 0;
+		self.blocked = $$.blocked_bit == 1;
+		self.substituted = $$.substituted_bit == 1;
+		self.topical = $$.topical_bit == 0;
+		self.valid = $$.valid_bit == 0;
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.3 Quality descriptor (separate object) ###################################################
+type QDS = unit{
+
+	# Declarations
+	var overflow: bool;
+	var blocked: bool;
+	var substituted: bool;
+	var topical: bool;
+	var valid: bool;
+
+	# Get quality descriptor (QDS) flags
+	: bitfield(8) {
+		overflow_bit: 0;
+		blocked_bit: 4;
+		substituted_bit: 5;
+		topical_bit: 6;
+		valid_bit: 7;
+	}{
+		self.overflow = $$.overflow_bit == 1;
+		self.blocked = $$.blocked_bit == 1;
+		self.substituted = $$.substituted_bit == 1;
+		self.topical = $$.topical_bit == 0;
+		self.valid = $$.valid_bit == 0;
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.22 Qualifier of interrogation ############################################################
+type QOI = unit{
+
+	# Declarations
+	var stationinterrogation: bool=False;
+
+	# Qualifier of interrogation command (QOI)
+	qoi: uint8;
+
+	# Check for station interrogation
+	on qoi {
+		if ( self.qoi == 20 ) {
+			self.stationinterrogation = True;
+		}
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.39 Qualifier of set-point command ########################################################
+type QOS = unit{
+
+	# Declarations
+	var execute: bool;
+	var select: bool;
+
+	# Get qualifier of set-point command (QOS) descriptor flags
+	: bitfield(8) {
+		bit8: 7;
+	}{
+		self.execute = $$.bit8==0;
+		self.select = $$.bit8==1;
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.25 Qualifier of parameter activation #####################################################
+type QPA = unit{
+
+	# Declarations
+	var qpa: string="UNKNOWN";
+
+	# Get qualifier of parameter of measured values (QPA) flags
+	: bitfield(8) {
+		qpa_bits: 0..3;
+	}{
+		if ( $$.qpa_bits == 0 ){
+			self.qpa = "UNUSED";
+		}
+		if ( $$.qpa_bits == 1 ){
+			self.qpa = "GENERAL";
+		}
+		if ( $$.qpa_bits == 2 ){
+			self.qpa = "OBJECT";
+		}
+		if ( $$.qpa_bits == 3 ){
+			self.qpa = "TRANSMISSION";
+		}
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.24 Qualifier of parameter of measured values #############################################
+type QPM = unit{
+
+	# Declarations
+	var kpa: string="UNKNOWN";
+	var lpc: bool;
+	var pop: bool;
+
+	# Get qualifier of parameter of measured values (QPM) flags
+	: bitfield(8) {
+		kpa_bits: 0..3;
+		lpc_bit: 6;
+		pop_bit: 7;
+	}{
+		if ( $$.kpa_bits == 0 ){
+			self.kpa = "UNUSED";
+		}
+		if ( $$.kpa_bits == 1 ){
+			self.kpa = "THRESHOLD";
+		}
+		if ( $$.kpa_bits == 2 ){
+			self.kpa = "FILTER";
+		}
+		if ( $$.kpa_bits == 3 ){
+			self.kpa = "LOW_LIMIT";
+		}
+		if ( $$.kpa_bits == 4 ){
+			self.kpa = "HIGH_LIMIT";
+		}
+		self.lpc = $$.lpc_bit==1;
+		self.pop = $$.pop_bit==0;
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.27 Qualifier of reset process command #####################################################
+type QRP = unit{
+
+	# Declarations
+	var qrp: string="UNKNOWN";
+
+	# Get qualifier of reset process command (QRP) flags
+	: bitfield(8) {
+		qrp_bits: 0..2;
+	}{
+		if ( $$.qrp_bits == 0 ){
+			self.qrp = "UNUSED";
+		}
+		if ( $$.qrp_bits == 1 ){
+			self.qrp = "GENERAL";
+		}
+		if ( $$.qrp_bits == 2 ){
+			self.qrp = "TTEVENTS";
+		}
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.17 Regulating step command ###############################################################
+type RCO = unit{
+
+	# Declarations
+	var increment: bool=False;
+	var decrement: bool=False;
+	var notallowed0: bool=False;
+	var notallowed3: bool=False;
+	var shortpulse: bool=False;
+	var longpulse: bool=False;
+	var persistent: bool=False;
+	var execute: bool;
+	var select: bool;
+
+	# Get regulating step command (RCO) descriptor flags
+	: bitfield(8) {
+		step_bits: 0..1;
+		pulse_bits: 2..6;
+		op_bit: 7;
+	}{
+		if ( $$.step_bits == 0 ) {
+			self.notallowed0 = True;
+		}
+		if ( $$.step_bits == 1 ) {
+			self.decrement = True;
+		}
+		if ( $$.step_bits == 2 ) {
+			self.increment = True;
+		}
+		if ( $$.step_bits == 3 ) {
+			self.notallowed3 = True;
+		}
+		if ( $$.pulse_bits == 1 ) {
+			self.shortpulse = True;
+		}
+		if ( $$.pulse_bits == 2 ) {
+			self.longpulse = True;
+		}
+		if ( $$.pulse_bits == 3 ) {
+			self.persistent = True;
+		}
+		self.execute = $$.op_bit==0;
+		self.select = $$.op_bit==1;
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.40 Status and status change detection ####################################################
+type SCD = unit{
+
+	# Status
+	st: bytes &size=2 &byte-order=spicy::ByteOrder::Little;
+
+	# Status change
+	cd: bytes &size=2 &byte-order=spicy::ByteOrder::Little;
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.15 Single command ########################################################################
+type SCO = unit{
+
+	# Declarations
+	var state_on: bool=False;
+	var state_off: bool=False;
+	var shortpulse: bool=False;
+	var longpulse: bool=False;
+	var persistent: bool=False;
+	var execute: bool;
+	var select: bool;
+
+	# Get single command (SCO) descriptor flags
+	: bitfield(8) {
+		state_bit: 0;
+		pulse_bits: 2..6;
+		op_bit: 7;
+	}{
+		if ( $$.state_bit == 0 ) {
+			self.state_off = True;
+		}
+		if ( $$.state_bit == 1 ) {
+			self.state_on = True;
+		}
+		if ( $$.pulse_bits == 1 ) {
+			self.shortpulse = True;
+		}
+		if ( $$.pulse_bits == 2 ) {
+			self.longpulse = True;
+		}
+		if ( $$.pulse_bits == 3 ) {
+			self.persistent = True;
+		}
+		self.execute = $$.op_bit==0;
+		self.select = $$.op_bit==1;
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.30 Select and call qualifier #############################################################
+type SCQ = unit{
+
+	# Declarations
+	var status: string="UNKNOWN";
+	var status_change: string="UNKNOWN";
+
+	# Status and status change flags
+	: bitfield(16) {
+		st_bits: 0..3;
+		cd_bits: 4..7;
+	}{
+		if ( $$.st_bits == 0 ){
+			self.status = "DEFAULT";
+		}
+		if ( $$.st_bits == 1 ){
+			self.status = "FILE_SELECT";
+		}
+		if ( $$.st_bits == 2 ){
+			self.status = "FILE_REQUEST";
+		}
+		if ( $$.st_bits == 3 ){
+			self.status = "FILE_ABORT";
+		}
+		if ( $$.st_bits == 4 ){
+			self.status = "FILE_DELETE";
+		}
+		if ( $$.st_bits == 5 ){
+			self.status = "SECTION_SELECT";
+		}
+		if ( $$.st_bits == 6 ){
+			self.status = "SECTION_REQUEST";
+		}
+		if ( $$.st_bits == 7 ){
+			self.status = "SECTION_ABORT";
+		}
+		if ( $$.cd_bits == 0 ){
+			self.status_change = "DEFAULT";
+		}
+		if ( $$.cd_bits == 1 ){
+			self.status_change = "NOT_AVAILABLE";
+		}
+		if ( $$.cd_bits == 2 ){
+			self.status_change = "FAILED_CHK";
+		}
+		if ( $$.cd_bits == 3 ){
+			self.status_change = "UNEXPECTED_SERVICE";
+		}
+		if ( $$.cd_bits == 4 ){
+			self.status_change = "UNEXPECTED_FILE";
+		}
+		if ( $$.cd_bits == 5 ){
+			self.status_change = "UNEXPECTED_SECTION";
+		}
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.10 Single event of protection equipment ##################################################
+type SEP = unit{
+
+	# Declarations
+	var state_on: bool=False;
+	var state_off: bool=False;
+	var indeterminate0: bool=False;
+	var indeterminate3: bool=False;
+	var elapsed: bool;
+	var blocked: bool;
+	var substituted: bool;
+	var topical: bool;
+	var valid: bool;
+
+	# Get single event of protection equipment (SEP) descriptor flags
+	: bitfield(8) {
+		state_bits: 0..1;
+		elapsed_bit: 3;
+		blocked_bit: 4;
+		substituted_bit: 5;
+		topical_bit: 6;
+		valid_bit: 7;
+	}{
+		if ( $$.state_bits == 0 ) {
+			self.indeterminate0 = True;
+		}
+		if ( $$.state_bits == 1 ) {
+			self.state_off = True;
+		}
+		if ( $$.state_bits == 2 ) {
+			self.state_on = True;
+		}
+		if ( $$.state_bits == 3 ) {
+			self.indeterminate3 = True;
+		}
+		self.elapsed = $$.elapsed_bit==0;
+		self.blocked = $$.blocked_bit==1;
+		self.substituted = $$.substituted_bit==1;
+		self.topical = $$.topical_bit==0;
+		self.valid = $$.valid_bit==0;
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.1 Single-point information with quality descriptor #######################################
+type SIQ = unit{
+
+	# Declarations
+	var state_on: bool;
+	var state_off: bool;
+	var blocked: bool;
+	var substituted: bool;
+	var topical: bool;
+	var valid: bool;
+
+	# Get single-point information (SIQ) with quality descriptor flags
+	: bitfield(8) {
+		state_bit: 0;
+		blocked_bit: 4;
+		substituted_bit: 5;
+		topical_bit: 6;
+		valid_bit: 7;
+	}{
+		self.state_on = $$.state_bit==1;
+		self.state_off = $$.state_bit==0;
+		self.blocked = $$.blocked_bit==1;
+		self.substituted = $$.substituted_bit==1;
+		self.topical = $$.topical_bit==0;
+		self.valid = $$.valid_bit==0;
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.38 Status of file ########################################################################
+type SOF = unit{
+
+	# Declarations
+	var status: uint8;
+	var lfd: bool;
+	var fiordir: bool;
+
+	# Get status of file (SOF) flags
+	: bitfield(8) {
+		status_bits: 0..4;
+		lfd_bit: 5;
+		for_bit: 6;
+	}{
+		self.status = $$.status_bits;
+		self.lfd = $$.lfd_bit==0;
+		self.fiordir = $$.for_bit==0;
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.11 Start events of protection equipment ##################################################
+type SPE = unit{
+
+	# Declarations
+	var gs: bool;
+	var sl1: bool;
+	var sl2: bool;
+	var sl3: bool;
+	var sie: bool;
+	var srd: bool;
+
+	# Get start events of protection equipment (SPE) flags
+	: bitfield(8) {
+		gs_bit: 0;
+		sl1_bit: 1;
+		sl2_bit: 2;
+		sl3_bit: 3;
+		sie_bit: 4;
+		srd_bit: 5;
+	}{
+		self.gs = $$.gs_bit==1;
+		self.sl1 = $$.sl1_bit==1;
+		self.sl2 = $$.sl2_bit==1;
+		self.sl3 = $$.sl3_bit==1;
+		self.sie = $$.sie_bit==1;
+		self.srd = $$.srd_bit==1;
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.29  Section ready qualifier ##############################################################
+type SRQ = unit{
+
+	# Declarations
+	var ready: bool;
+
+	# Get section ready qualifier (SRQ) flags
+	: bitfield(8) {
+		ready_bit: 7;
+	}{
+		self.ready = $$.ready_bit==0;
+	}
+
+};
+
+
+# IEC 60870-5-101:2003, 7.2.6.7 Scaled value ###########################################################################
+type SVA = unit{
+
+	# Scaled value
+	sva: int16 &byte-order=spicy::ByteOrder::Little;
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.5 Value with transient state indication ##################################################
+type VTI = unit {
+
+	# Declarations
+	var value: int8;
+	var transient: bool;
+
+	# Get value and transient flag from transient state indication (VTI)
+	: bitfield(8) {
+		value_bits: 0..6 &convert=cast<int8>($$);
+		transient_bit: 7;
+	}{
+		self.value = $$.value_bits;
+		self.transient = $$.transient_bit == 1;
+	}
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.20 Dual time, 2 octetts ##################################################################
+type CP16Time2a = unit{
+
+	# Milliseconds
+	ms: uint16 &byte-order=spicy::ByteOrder::Little;
+
+};
+
+# IEC 60870-5-101:2003, 7.2.6.18 Dual time, 7 octetts ##################################################################
+type CP56Time2a = unit{
+
+	# Declarations
+	var valid: bool;
+	var su: bool;
+	var minutes: uint8;
+	var hours: uint8;
+	var day: uint8;
+	var dow: uint8;
+	var month: uint8;
+	var year: uint8;
+
+	# Milliseconds
+	ms: uint16 &byte-order=spicy::ByteOrder::Little;
+
+	# Get minutes and validity flag from minutes descriptor
+	: bitfield(8) {
+		minutes_bits: 0..5;
+		valid_bit: 7;
+	}{
+		self.minutes = $$.minutes_bits;
+		self.valid = $$.valid_bit == 0;
+	}
+
+	# Get hours and summer time (SU) from hour descriptor
+	: bitfield(8) {
+		hour_bits: 0..4;
+		su_bit: 7;
+	}{
+		self.hours = $$.hour_bits;
+		self.su = $$.su_bit == 1;
+	}
+
+	# Get day and day of the week (DOW) from day descriptor
+	: bitfield(8) {
+		day_bits: 0..4;
+		dow_bits: 5..7;
+	}{
+		self.day = $$.day_bits;
+		self.dow = $$.dow_bits;
+	}
+
+	# Get month from month descriptor
+	: bitfield(8) {
+		month_bits: 0..3;
+	}{
+		self.month = $$.month_bits;
+	}
+
+	# Get year from year descriptor
+	: bitfield(8) {
+		year_bits: 0..6;
+	}{
+		self.year = $$.year_bits;
+	}
+
+};
+
+type ShortFloat = unit{
+
+	# Short floating point number (IEEE STD 754)
+	shortfloat: real &type=spicy::RealType::IEEE754_Single &byte-order=spicy::ByteOrder::Little;
+
+};

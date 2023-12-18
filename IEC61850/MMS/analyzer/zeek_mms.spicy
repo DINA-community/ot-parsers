@@ -1,0 +1,878 @@
+module Zeek_MMS;
+
+import IEC61850_MMS;
+import mms_lib;
+import zeek;
+
+# Convert MMS code to string
+public function convert_mmscode(code: IEC61850_MMS::mms_code) : string {
+
+    # Declarations
+    local code_str: string;
+
+    if ( code == IEC61850_MMS::mms_code::CONFIRMED_REQUEST ){
+        code_str = "CONFIRMED_REQUEST";
+    }
+    if ( code == IEC61850_MMS::mms_code::CONFIRMED_RESPONSE ){
+        code_str = "CONFIRMED_RESPONSE";
+    }
+    if ( code == IEC61850_MMS::mms_code::CONFIRMED_ERROR ){
+        code_str = "CONFIRMED_ERROR";
+    }
+    if ( code == IEC61850_MMS::mms_code::UNCONFIRMED ){
+        code_str = "UNCONFIRMED";
+    }
+    if ( code == IEC61850_MMS::mms_code::REJECT ){
+        code_str = "REJECT";
+    }
+    if ( code == IEC61850_MMS::mms_code::CANCEL_REQUEST ){
+        code_str = "CANCEL_REQUEST";
+    }
+    if ( code == IEC61850_MMS::mms_code::CANCEL_RESPONSE ){
+        code_str = "CANCEL_RESPONSE";
+    }
+    if ( code == IEC61850_MMS::mms_code::CANCEL_ERROR ){
+        code_str = "CANCEL_ERROR";
+    }
+    if ( code == IEC61850_MMS::mms_code::INITIATE_REQUEST ){
+        code_str = "INITIATE_REQUEST";
+    }
+    if ( code == IEC61850_MMS::mms_code::INITIATE_RESPONSE ){
+        code_str = "INITIATE_RESPONSE";
+    }
+    if ( code == IEC61850_MMS::mms_code::INITIATE_ERROR ){
+        code_str = "INITIATE_ERROR";
+    }
+    if ( code == IEC61850_MMS::mms_code::CONCLUDE_REQUEST ){
+        code_str = "CONCLUDE_REQUEST";
+    }
+    if ( code == IEC61850_MMS::mms_code::CONCLUDE_RESPONSE ){
+        code_str = "CONCLUDE_RESPONSE";
+    }
+    if ( code == IEC61850_MMS::mms_code::CONCLUDE_ERROR ){
+        code_str = "CONCLUDE_ERROR";
+    }
+    return code_str;
+}
+
+# Extract initiate request message
+public function extract_init_requ(msg: IEC61850_MMS::MMS_PDU) : tuple<int64, int64, int64, int64> {
+
+    # Declarations
+    local locDetCall: int64;
+    local propMaxServOutCalling: int64;
+    local propMaxServOutCalled: int64;
+    local propDataStrucNestLvl: int64;
+
+    # Extract message information
+    for ( req in msg.init_req ){
+        if ( req.id.tag == 0 ){
+            locDetCall = req.localDetailCalling;
+        }
+        if ( req.id.tag == 1 ){
+            propMaxServOutCalling = req.proposedMaxServOutstandingCalling;
+        }
+        if ( req.id.tag == 2 ){
+            propMaxServOutCalled = req.proposedMaxServOutstandingCalled;
+        }
+        if ( req.id.tag == 3 ){
+            propDataStrucNestLvl = req.proposedDataStructureNestingLevel;
+        }
+    }
+    return (locDetCall, propMaxServOutCalling, propMaxServOutCalled, propDataStrucNestLvl);
+}
+
+# Extract initiate response message
+public function extract_init_resp(msg: IEC61850_MMS::MMS_PDU) : tuple<int64, int64, int64, int64> {
+
+    # Declarations
+    local locDetCalled: int64;
+    local negMaxServOutCalling: int64;
+    local negMaxServOutCalled: int64;
+    local negDataStrucNestLvl: int64;
+
+    # Extract message information
+    for ( resp in msg.init_resp ){
+        if ( resp.id.tag == 0 ){
+            locDetCalled = resp.localDetailCalled;
+        }
+        if ( resp.id.tag == 1 ){
+            negMaxServOutCalling = resp.negotiatedMaxServOutstandingCalling;
+        }
+        if ( resp.id.tag == 2 ){
+            negMaxServOutCalled = resp.negotiatedMaxServOutstandingCalled;
+        }
+        if ( resp.id.tag == 3 ){
+            negDataStrucNestLvl = resp.negotiatedDataStructureNestingLevel;
+        }
+    }
+    return (locDetCalled, negMaxServOutCalling, negMaxServOutCalled, negDataStrucNestLvl);
+}
+
+# Extract status response message
+public function extract_status_resp(msg: IEC61850_MMS::CONFIRMED_RESPONSE) : tuple<string, string> {
+
+    # Declarations
+    local logStatus: string;
+    local physStatus: string;
+
+    # Extract message information
+    for ( s in msg.status ){
+        if ( s.id.tag == 0 ){
+            if ( s.vmdLogicalStatus == mms_lib::VMD_LOGICAL_STATUS::STATE_CHANGES_ALLOWED ){
+                logStatus = "STATE_CHANGES_ALLOWED";
+            }
+            if ( s.vmdLogicalStatus == mms_lib::VMD_LOGICAL_STATUS::NO_STATE_CHANGES_ALLOWED ){
+                logStatus = "NO_STATE_CHANGES_ALLOWED";
+            }
+            if ( s.vmdLogicalStatus == mms_lib::VMD_LOGICAL_STATUS::LIMITED_SERVICES_PERMITTED ){
+                logStatus = "LIMITED_SERVICES_PERMITTED";
+            }
+            if ( s.vmdLogicalStatus == mms_lib::VMD_LOGICAL_STATUS::SUPPORT_SERVICES_ALLOWED ){
+                logStatus = "SUPPORT_SERVICES_ALLOWED";
+            }
+        }
+        if (s.id.tag == 1){
+            if ( s.vmdPhysicalStatus == mms_lib::VMD_PHYSICAL_STATUS::OPERATIONAL ){
+                physStatus = "OPERATIONAL";
+            }
+            if ( s.vmdPhysicalStatus == mms_lib::VMD_PHYSICAL_STATUS::PARTIALLY_OPERATIONAL ){
+                physStatus = "PARTIALLY_OPERATIONAL";
+            }
+            if ( s.vmdPhysicalStatus == mms_lib::VMD_PHYSICAL_STATUS::INOPERABLE ){
+                physStatus = "INOPERABLE";
+            }
+            if ( s.vmdPhysicalStatus == mms_lib::VMD_PHYSICAL_STATUS::NEEDS_COMMISSIONING ){
+                physStatus = "NEEDS_COMMISSIONING";
+            }
+        }
+    }
+    return (logStatus, physStatus);
+}
+
+# Extract getnamelist request message
+public function extract_getnamelist_requ(msg: IEC61850_MMS::CONFIRMED_REQUEST) : tuple<vector<tuple<string, string>>, vector<tuple<bool, string, bool>>, string> {
+
+    # Declarations
+    local obj: tuple<string, string>;
+    local objClass: vector<tuple<string, string>>;
+    local scope: tuple<bool, string, bool>;
+    local objScope: vector<tuple<bool, string, bool>>;
+    local contAfter: string;
+
+    # Extract message information
+    for ( g in msg.getnamelist ){
+        if ( g.id.tag == 0 ){
+            for ( o in g.objectClass ){
+                if ( o.id.tag == 0 ){
+                    if ( o.basicObjectClass == mms_lib::BASIC_OBJ_CLASS::NAMED_VARIABLE ){
+                        obj[0] = "NAMED_VARIABLE";
+                    }
+                    if ( o.basicObjectClass == mms_lib::BASIC_OBJ_CLASS::SCATTERED_ACCESS ){
+                        obj[0] = "SCATTERED_ACCESS";
+                    }
+                    if ( o.basicObjectClass == mms_lib::BASIC_OBJ_CLASS::NAMED_VARIABLE_LIST ){
+                        obj[0] = "NAMED_VARIABLE_LIST";
+                    }
+                    if ( o.basicObjectClass == mms_lib::BASIC_OBJ_CLASS::NAMED_TYPE ){
+                        obj[0] = "NAMED_TYPE";
+                    }
+                    if ( o.basicObjectClass == mms_lib::BASIC_OBJ_CLASS::SEMAPHORE ){
+                        obj[0] = "SEMAPHORE";
+                    }
+                    if ( o.basicObjectClass == mms_lib::BASIC_OBJ_CLASS::EVENT_CONDITION ){
+                        obj[0] = "EVENT_CONDITION";
+                    }
+                    if ( o.basicObjectClass == mms_lib::BASIC_OBJ_CLASS::EVENT_ACTION ){
+                        obj[0] = "EVENT_ACTION";
+                    }
+                    if ( o.basicObjectClass == mms_lib::BASIC_OBJ_CLASS::EVENT_ENROLLMENT ){
+                        obj[0] = "EVENT_ENROLLMENT";
+                    }
+                    if ( o.basicObjectClass == mms_lib::BASIC_OBJ_CLASS::JOURNAL ){
+                        obj[0] = "JOURNAL";
+                    }
+                    if ( o.basicObjectClass == mms_lib::BASIC_OBJ_CLASS::DOMAIN ){
+                        obj[0] = "DOMAIN";
+                    }
+                    if ( o.basicObjectClass == mms_lib::BASIC_OBJ_CLASS::PROGRAM_INVOCATION ){
+                        obj[0] = "PROGRAM_INVOCATION";
+                    }
+                    if ( o.basicObjectClass == mms_lib::BASIC_OBJ_CLASS::OPERATOR_STATION ){
+                        obj[0] = "OPERATOR_STATION";
+                    }
+                    if ( o.basicObjectClass == mms_lib::BASIC_OBJ_CLASS::DATA_EXCHANGE ){
+                        obj[0] = "DATA_EXCHANGE";
+                    }
+                    if ( o.basicObjectClass == mms_lib::BASIC_OBJ_CLASS::ACCESS_CONTROL_LIST ){
+                        obj[0] = "ACCESS_CONTROL_LIST";
+                    }
+                }
+                if ( o.id.tag == 1 ){
+                    if ( o.csObjectClass == mms_lib::CS_OBJ_CLASS::EVENT_CONDITION_LIST ){
+                        obj[1] = "EVENT_CONDITION_LIST";
+                    }
+                    if ( o.csObjectClass == mms_lib::CS_OBJ_CLASS::UNIT_CONTROL ){
+                        obj[1] = "UNIT_CONTROL";
+                    }
+                }
+            }
+            objClass.push_back(obj);
+        }
+        if ( g.id.tag == 1 ){
+            for ( o in g.objectScope ){
+                if ( o.id.tag == 0 ){
+                    scope[0] = o.vmdspecific;
+                }
+                if ( o.id.tag == 1 ){
+                    scope[1] = o.domainspecific;
+                }
+                if ( o.id.tag == 2 ){
+                    scope[2] = o.aaspecific;
+                }
+            }
+            objScope.push_back(scope);
+        }
+        if ( g.id.tag == 2 ){
+            contAfter = g.continueAfter;
+        }
+    }
+
+    return (objClass, objScope, contAfter );
+}
+
+# Extract getnamelist response message
+public function extract_getnamelist_resp(msg: IEC61850_MMS::CONFIRMED_RESPONSE) : tuple<vector<string>, bool> {
+
+    # Declarations
+    local identifier: vector<string>;
+    local moreFollows: bool;
+
+    # Extract message information
+    for ( g in msg.getnamelist ){
+        if ( g.id.tag == 0 ){
+            for ( id in g.listOfIdentifier ){
+                identifier.push_back(id.name);
+            }
+        }
+        if ( g.id.tag == 1 ){
+            moreFollows = g.moreFollows;
+        }
+
+    }
+    return (identifier, moreFollows);
+}
+
+# Extract identify response message
+public function extract_identify_resp(msg: IEC61850_MMS::CONFIRMED_RESPONSE) : tuple<string, string, string> {
+
+    # Declarations
+    local vendorName: string;
+    local modelName: string;
+    local revision: string;
+
+    # Extract message information
+    for ( i in msg.identify ){
+        if ( i.id.tag == 0 ){
+            vendorName = i.vendorName;
+        }
+        if ( i.id.tag == 1 ){
+            modelName = i.modelName;
+        }
+        if ( i.id.tag == 2 ){
+            revision = i.revision;
+        }
+    }
+    return (vendorName, modelName, revision);
+}
+
+# Extract read request message
+public function extract_read_requ(msg: IEC61850_MMS::CONFIRMED_REQUEST) : tuple<bool, vector<vector<tuple<string, string, string, string>>>, tuple<string, string, string, string>> {
+
+    # Declarations
+    local specWithResult: bool;
+    local varListName: tuple<string, string, string, string>;
+    local varSpecList: vector<vector<tuple<string, string, string, string>>>;
+
+    # Extract message information
+    for ( r in msg.read ){
+        if ( r.id.tag == 0 ){
+            specWithResult = r.specificationWithResult;
+        }
+        if ( r.id.tag == 1 ){
+            if ( r.variableAccessSpecification.id.tag == 0 ){
+                for ( varList in r.variableAccessSpecification.listOfVariable ){
+                    varSpecList.push_back(extract_varspeclist(varList));
+                }
+            }
+            if ( r.variableAccessSpecification.id.tag == 1 ){
+                varListName = extract_objname(r.variableAccessSpecification.variableListName);
+            }
+        }
+    }
+    return (specWithResult, varSpecList, varListName);
+}
+
+# Extract read response message
+public function extract_read_resp(msg: IEC61850_MMS::CONFIRMED_RESPONSE) : tuple<vector<vector<tuple<string, string, string, string>>>, tuple<string, string, string, string>, vector<vector<tuple<bool, int64, uint64, string, string, string>>>> {
+
+    # Declarations
+    local varSpecList: vector<vector<tuple<string, string, string, string>>>;
+    local varListName: tuple<string, string, string, string>;
+    local data: vector<vector<tuple<bool, int64, uint64, string, string, string>>>;
+
+    # Extract message information
+    for ( r in msg.read ){
+        if ( r.id.tag == 0 ){
+            if ( r.variableAccessSpecification.id.tag == 0 ){
+                for ( varList in r.variableAccessSpecification.listOfVariable ){
+                    varSpecList.push_back(extract_varspeclist(varList));
+                }
+            }
+            if ( r.variableAccessSpecification.id.tag == 1 ){
+                varListName = extract_objname(r.variableAccessSpecification.variableListName);
+            }
+        }
+        if ( r.id.tag == 1 ){
+            for ( reslist in r.listOfAccessResult ){
+                for ( accessRes in reslist.data ){
+                    data.push_back(extract_data(accessRes));
+                }
+            }
+        }
+    }
+    return (varSpecList, varListName, data);
+}
+
+# Extract write request message
+public function extract_write_requ(msg: IEC61850_MMS::CONFIRMED_REQUEST) : tuple<vector<vector<tuple<bool, int64, uint64, string, string, string>>>, vector<vector<tuple<string, string, string, string>>>, tuple<string, string, string, string>> {
+
+    # Declarations
+    local data: vector<vector<tuple<bool, int64, uint64, string, string, string>>>;
+    local varSpecList: vector<vector<tuple<string, string, string, string>>>;
+    local varListName: tuple<string, string, string, string>;
+
+    # Extract message information
+    for ( w in msg.write ){
+        if ( w.id.tag == 0 ){
+            for ( d in w.listOfData ){
+                data.push_back(extract_data(d));
+            }
+        }
+
+        if ( w.variableAccessSpecification.id.tag == 0 ){
+			for ( varList in w.variableAccessSpecification.listOfVariable ){
+				varSpecList.push_back(extract_varspeclist(varList));
+			}
+		} else if ( w.variableAccessSpecification.id.tag == 1 ){
+			varListName = extract_objname(w.variableAccessSpecification.variableListName);
+		}
+	}
+    return (data, varSpecList, varListName);
+}
+
+# Extract write response message
+public function extract_write_resp(msg: IEC61850_MMS::CONFIRMED_RESPONSE) : tuple<string, bool> {
+
+    # Declarations
+    local accesserr: string;
+    local success: bool;
+
+    # Extract message information
+    for ( w in msg.write ){
+        if ( w.id.tag == 0 ){
+            if ( w.failure == mms_lib::DATA_ACCESS_ERROR::OBJECT_INVALIDATED ){
+                accesserr = "OBJECT_INVALIDATED";
+            }
+            if ( w.failure == mms_lib::DATA_ACCESS_ERROR::HARDWARE_FAULT ){
+                accesserr = "HARDWARE_FAULT";
+            }
+            if ( w.failure == mms_lib::DATA_ACCESS_ERROR::TEMPORARILY_UNAVAILABLE ){
+                accesserr = "TEMPORARILY_UNAVAILABLE";
+            }
+            if ( w.failure == mms_lib::DATA_ACCESS_ERROR::OBJECT_ACCESS_DENIED ){
+                accesserr = "OBJECT_ACCESS_DENIED";
+            }
+            if ( w.failure == mms_lib::DATA_ACCESS_ERROR::OBJECT_UNDEFINED ){
+                accesserr = "OBJECT_UNDEFINED";
+            }
+            if ( w.failure == mms_lib::DATA_ACCESS_ERROR::INVALID_ADDRESS ){
+                accesserr = "INVALID_ADDRESS";
+            }
+            if ( w.failure == mms_lib::DATA_ACCESS_ERROR::TYPE_UNSUPPORTED ){
+                accesserr = "TYPE_UNSUPPORTED";
+            }
+            if ( w.failure == mms_lib::DATA_ACCESS_ERROR::TYPE_INCONSISTENT ){
+                accesserr = "TYPE_INCONSISTENT";
+            }
+            if ( w.failure == mms_lib::DATA_ACCESS_ERROR::OBJECT_ATTRIBUTE_INCONSISTENT ){
+                accesserr = "OBJECT_ATTRIBUTE_INCONSISTENT";
+            }
+            if ( w.failure == mms_lib::DATA_ACCESS_ERROR::OBJECT_ACCESS_UNSUPPORTED ){
+                accesserr = "OBJECT_ACCESS_UNSUPPORTED";
+            }
+            if ( w.failure == mms_lib::DATA_ACCESS_ERROR::OBJECT_NON_EXISTENT ){
+                accesserr = "OBJECT_NON_EXISTENT";
+            }
+            if ( w.failure == mms_lib::DATA_ACCESS_ERROR::OBJECT_VALUE_INVALID ){
+                accesserr = "OBJECT_VALUE_INVALID";
+            }
+        }
+        if ( w.id.tag == 1 ){
+            success = w.success;
+        }
+    }
+    return (accesserr, success);
+}
+
+# Extract getVariableAccessAttributes request message
+public function extract_getvarattr_requ(msg: IEC61850_MMS::CONFIRMED_REQUEST) : tuple<tuple<string, string, string, string>, tuple<uint64, string, string>> {
+
+    # Declarations
+    local objName: tuple<string, string, string, string>;
+    local objAddr: tuple<uint64, string, string>;
+
+    # Extract message information
+    for ( g in msg.getVariableAccessAttributes ){
+        if ( g.id.tag == 0 ){
+            objName = extract_objname(g.name);
+        }
+        if ( g.id.tag == 1 ){
+            if ( g.address.id.tag == 0 ){
+                objAddr[0] = g.address.numericAddress;
+            }
+            if ( g.address.id.tag == 1 ){
+                objAddr[1] = g.address.symbolicAddress;
+            }
+            if ( g.address.id.tag == 1 ){
+                objAddr[2] = g.address.unconstrainedAddress;
+            }
+        }
+    }
+    return (objName, objAddr);
+}
+
+# Extract getVariableAccessAttributes response message
+public function extract_getvarattr_resp(msg: IEC61850_MMS::CONFIRMED_RESPONSE) : tuple<bool, tuple<uint64, string, string>> {
+
+    # Declarations
+    local mmsDeletable: bool;
+    local objAddr: tuple<uint64, string, string>;
+
+    # Extract message information
+    for ( g in msg.getVariableAccessAttributes ){
+        if ( g.id.tag == 0 ){
+            mmsDeletable = g.mmsDeletable;
+        }
+        if ( g.id.tag == 1 ){
+            if ( g.address.id.tag == 0 ){
+                objAddr[0] = g.address.numericAddress;
+            }
+            if ( g.address.id.tag == 1 ){
+                objAddr[1] = g.address.symbolicAddress;
+            }
+            if ( g.address.id.tag == 1 ){
+                objAddr[2] = g.address.unconstrainedAddress;
+            }
+        }
+    }
+    return (mmsDeletable, objAddr);
+}
+
+# Extract defineNamedVariableList request message
+public function extract_defvarlist_requ(msg: IEC61850_MMS::CONFIRMED_REQUEST) : tuple<vector<vector<tuple<string, string, string, string>>>, tuple<string, string, string, string>> {
+
+    # Declarations
+    local listVars: vector<vector<tuple<string, string, string, string>>>;
+    local varListName: tuple<string, string, string, string>;
+
+    # Extract message information
+    for ( d in msg.defineNamedVariableList ){
+        if ( d.id.tag == 0 ){
+            for ( varlist in d.listOfVariable ){
+                listVars.push_back(extract_varspeclist(varlist));
+            }
+        } else {
+            varListName = extract_objname(d.variableListName);
+        }
+    }
+    return (listVars, varListName);
+}
+
+# Extract getNamedVarListAttr request message
+public function extract_getvarlistattr_requ(msg: IEC61850_MMS::CONFIRMED_REQUEST) : tuple<string, string, string, string> {
+
+    # Declarations
+    local objName: tuple<string, string, string, string>;
+
+    # Extract message information
+    objName = extract_objname(msg.getnamedvarlistattr);
+
+    return objName;
+}
+
+# Extract getNamedVarListAttr response message
+public function extract_getvarlistattr_resp(msg: IEC61850_MMS::CONFIRMED_RESPONSE) : tuple<bool, vector<vector<tuple<string, string, string, string>>>, string> {
+
+    # Declarations
+    local mmsDeletable: bool;
+    local listVars: vector<vector<tuple<string, string, string, string>>>;
+    local accCtlList: string;
+
+    # Extract message information
+    for ( g in msg.getnamedvarlistattr ){
+        if ( g.id.tag == 0 ){
+            mmsDeletable = g.mmsDeletable;
+        }
+        if ( g.id.tag == 1 ){
+            for ( varlist in g.listOfVariable ){
+                listVars.push_back(extract_varspeclist(varlist));
+            }
+        }
+        if ( g.id.tag == 2 ){
+            accCtlList = g.accessControlList;
+        }
+    }
+
+    return (mmsDeletable, listVars, accCtlList);
+}
+
+# Extract deleteNamedVariableList request message
+public function extract_delvarlist_requ(msg: IEC61850_MMS::CONFIRMED_REQUEST) : tuple<string, vector<tuple<string, string, string, string>>, string> {
+
+    # Declarations
+    local scopeOfDelete: string;
+    local varListName: vector<tuple<string, string, string, string>>;
+    local domainName: string;
+
+    # Extract message information
+    for ( d in msg.deleteNamedVariableList ){
+        if ( d.id.tag == 0 ){
+            if ( d.scopeOfDelete == mms_lib::SCOPE_OF_DELETE::SPECIFIC ){
+                scopeOfDelete = "SPECIFIC";
+            }
+            if ( d.scopeOfDelete == mms_lib::SCOPE_OF_DELETE::AA_SPECIFIC ){
+                scopeOfDelete = "AA_SPECIFIC";
+            }
+            if ( d.scopeOfDelete == mms_lib::SCOPE_OF_DELETE::DOMAIN ){
+                scopeOfDelete = "DOMAIN";
+            }
+            if ( d.scopeOfDelete == mms_lib::SCOPE_OF_DELETE::VMD ){
+                scopeOfDelete = "VMD";
+            }
+        }
+        if ( d.id.tag == 1 ){
+            for ( varList in d.listOfVariableListName ) {
+                varListName.push_back(extract_objname(varList));
+            }
+        }
+        if ( d.id.tag == 2 ){
+            domainName = d.domainName;
+        }
+    }
+    return (scopeOfDelete, varListName, domainName);
+}
+
+# Extract deleteNamedVariableList response message
+public function extract_delvarlist_resp(msg: IEC61850_MMS::CONFIRMED_RESPONSE) : tuple<uint64, uint64> {
+
+    # Declarations
+    local numberMatched: uint64;
+    local numberDeleted: uint64;
+
+    # Extract message information
+    for ( d in msg.deleteNamedVariableList ){
+        if ( d.id.tag == 0 ){
+            numberMatched = d.numberMatched;
+        }
+        if ( d.id.tag == 1 ){
+            numberDeleted = d.numberDeleted;
+        }
+    }
+    return (numberMatched, numberDeleted);
+}
+
+# Extract obtainFile request message
+public function extract_obfile_requ(msg: IEC61850_MMS::CONFIRMED_REQUEST) : tuple<string, string> {
+
+    # Declarations
+    local srcFile: string;
+    local dstFile: string;
+
+    # Extract message information
+    for ( o in msg.obtainFile ){
+        if ( o.id.tag == 1 ){
+            srcFile = o.sourceFile;
+        }
+        if ( o.id.tag == 2 ){
+            dstFile = o.destinationFile;
+        }
+    }
+    return (srcFile, dstFile);
+}
+
+# Extract fileOpen request message
+public function extract_fileopen_requ(msg: IEC61850_MMS::CONFIRMED_REQUEST) : tuple<string, uint64> {
+
+    # Declarations
+    local fileName: string;
+    local initPos: uint64;
+
+    # Extract message information
+    for ( f in msg.fileOpen ){
+        if ( f.id.tag == 0){
+            fileName = f.fileName;
+        }
+        if ( f.id.tag == 1 ){
+            initPos = f.initialPosition;
+        }
+    }
+    return (fileName, initPos);
+}
+
+# Extract fileOpen response message
+public function extract_fileopen_resp(msg: IEC61850_MMS::CONFIRMED_RESPONSE) : tuple<uint64, vector<tuple<uint64, string>>> {
+
+    # Declarations
+    local frsmID: uint64;
+    local attr: tuple<uint64, string>;
+    local fileAttr: vector<tuple<uint64, string>>;
+
+    # Extract message information
+    for ( f in msg.fileOpen ){
+        if ( f.id.tag == 0){
+            frsmID = f.frsmID;
+        }
+        if ( f.id.tag == 1){
+            for ( a in f.fileAttributes ){
+                if ( a.id.tag == 0 ){
+                    attr[0] = a.sizeOfFile;
+                }
+                if ( a.id.tag == 1 ){
+                    attr[1] = a.lastModified;
+                }
+            }
+            fileAttr.push_back(attr);
+        }
+    }
+    return (frsmID, fileAttr);
+}
+
+# Extract fileRead response message
+public function extract_fileread_resp(msg: IEC61850_MMS::CONFIRMED_RESPONSE) : tuple<string, bool> {
+
+    # Declarations
+    local fileData: string;
+    local moreFollows: bool;
+
+    # Extract message information
+    for ( f in msg.fileRead ){
+        if ( f.id.tag == 0 ){
+            fileData = f.fileData;
+        }
+        if ( f.id.tag == 1 ){
+            moreFollows = f.moreFollows;
+        }
+    }
+    return (fileData, moreFollows);
+}
+
+# Extract fileRename request message
+public function extract_filerename_requ(msg: IEC61850_MMS::CONFIRMED_REQUEST) : tuple<string, string> {
+
+    # Declarations
+    local currFile: string;
+	local newFile: string;
+
+    # Extract message information
+    for ( f in msg.fileRename ){
+        if ( f.id.tag == 0 ){
+            currFile = f.currentFileName;
+        }
+        if ( f.id.tag == 1 ){
+            newFile = f.newFileName;
+        }
+    }
+    return (currFile, newFile);
+}
+
+# Extract fileDir request message
+public function extract_filedir_requ(msg: IEC61850_MMS::CONFIRMED_REQUEST) : tuple<string, string> {
+
+    # Declarations
+    local fileSpec: string;
+	local continueAfter: string;
+
+    # Extract message information
+    for ( f in msg.fileDir ){
+        if ( f.id.tag == 0 ){
+            fileSpec = f.fileSpecification;
+        }
+        if ( f.id.tag == 1 ){
+            continueAfter = f.continueAfter;
+        }
+    }
+    return (fileSpec, continueAfter);
+}
+
+# Extract fileDir response message
+public function extract_filedir_resp(msg: IEC61850_MMS::CONFIRMED_RESPONSE) : tuple<vector<tuple<string, uint64, string>>, bool> {
+
+    # Declarations
+    local entry: tuple<string, uint64, string>;
+    local dirEntries: vector<tuple<string, uint64, string>>;
+    local moreFollows: bool;
+
+    # Extract message information
+    for ( f in msg.fileDir ){
+        if ( f.id.tag == 0 ){
+            for ( l in f.ListOfDirectoryEntry ){
+                for ( e in l.DirectoryEntry ){
+                    if ( e.id.tag == 0 ){
+                        entry[0] = e.fileName;
+                    }
+                    if ( e.id.tag == 1 ){
+                        for ( attr in e.fileAttributes ){
+                            if ( attr.id.tag == 0 ){
+                                entry[1] = attr.sizeOfFile;
+                            }
+                            if ( attr.id.tag == 1 ){
+                                entry[2] = attr.lastModified;
+                            }
+                        }
+                    }
+                }
+                dirEntries.push_back(entry);
+            }
+        }
+        if ( f.id.tag == 1 ){
+            moreFollows = f.moreFollows;
+        }
+    }
+    return (dirEntries, moreFollows);
+}
+
+# Extract infoReport message
+public function extract_inforep(msg: IEC61850_MMS::UNCONFIRMED) : tuple<vector<vector<tuple<string, string, string, string>>>, tuple<string, string, string, string>, vector<vector<tuple<bool, int64, uint64, string, string, string>>>> {
+
+    # Declarations
+    local varSpecList: vector<vector<tuple<string, string, string, string>>>;
+    local varListName: tuple<string, string, string, string>;
+    local data: vector<vector<tuple<bool, int64, uint64, string, string, string>>>;
+
+    # Extract message information
+    if ( msg.infoReport.variableAccessSpecification.id.tag == 0 ){
+        for ( varList in msg.infoReport.variableAccessSpecification.listOfVariable ){
+            varSpecList.push_back(extract_varspeclist(varList));
+        }
+    }
+    if ( msg.infoReport.variableAccessSpecification.id.tag == 1 ){
+        varListName = extract_objname(msg.infoReport.variableAccessSpecification.variableListName);
+    }
+    for ( accessRes in msg.infoReport.listOfAccessResult.data ){
+        data.push_back(extract_data(accessRes));
+    }
+    return (varSpecList, varListName, data);
+}
+
+# Extract list of variable specifications
+function extract_varspeclist(data: mms_lib::LIST_OF_VAR) : vector<tuple<string, string, string, string>> {
+
+    # Declarations
+    local varSpecList: vector<tuple<string, string, string, string>>;
+    
+    # Extract variable access specification information
+    if ( data.id.tag != 5 ){
+        for ( spec in data.variableSpecification ){
+            if ( spec.id.tag == 0 ){           
+                varSpecList.push_back(extract_objname(spec.name));
+            }
+        }
+    }
+    return varSpecList;
+}
+
+# Extract object name
+function extract_objname(data: mms_lib::OBJECT_NAME) : tuple<string, string, string, string> {
+
+    # Declarations
+    local vmdspecific: string;
+    local domainID: string;
+    local itemID: string;
+    local aaspecific: string;
+
+    # Extract object name information
+    if ( data.id.tag == 0 ){
+        vmdspecific = data.vmdspecific;
+    }
+    if ( data.id.tag == 1 ){
+        domainID = data.domainID;
+        itemID = data.itemID;
+    }
+    if ( data.id.tag == 2 ){
+        aaspecific = data.aaspecific;
+    }
+
+    return (vmdspecific, domainID, itemID, aaspecific);
+}
+
+# Extract information from data object
+function extract_data(data: mms_lib::DATA) : vector<tuple<bool, int64, uint64, string, string, string>> {
+
+    # Declarations
+    local info: tuple<bool, int64, uint64, string, string, string>;
+    local results: vector<tuple<bool, int64, uint64, string, string, string>>;
+
+    # Extract information
+    if ( data.id.tag == 1 || data.id.tag == 2 ){
+        for ( entry in data.data ){
+            info = extract_data(entry)[0];
+            results.push_back(info);
+        }
+    } else {
+        if ( data.id.tag == 3 ){
+            info[0] = data.boolean;
+        }
+        if ( data.id.tag == 5 ){
+            info[1] = data.integer;
+        }
+        if ( data.id.tag == 6 ){
+            info[2] = data.unsigned_integer;
+        }
+        if ( data.id.tag == 9 ){
+            info[3] = data.octetstring;
+        }
+        if ( data.id.tag == 10 ){
+            info[4] = data.visiblestring;
+        }
+        if ( data.id.tag == 11 ){
+            info[5] = data.generalizedtime;
+        }
+        results.push_back(info);
+    }
+    return results;
+}
+
+# Any error bubbling up to the top unit will trigger a protocol rejection.
+# on MMS::SUITABLE_UNIT {
+#     zeek::confirm_protocol();
+# }
+on IEC61850_MMS::MMS_PDU::%error {
+    zeek::reject_protocol("error while parsing MMS PDU");
+}
+
+on IEC61850_MMS::INIT_REQ::%error {
+    zeek::reject_protocol("error while parsing MMS Initiate Request PDU");
+}
+
+on IEC61850_MMS::INIT_RESP::%error {
+    zeek::reject_protocol("error while parsing MMS Initiate Response PDU");
+}
+
+on IEC61850_MMS::CONFIRMED_REQUEST::%error {
+    zeek::reject_protocol("error while parsing MMS Confirmed Request PDU");
+}
+
+on IEC61850_MMS::CONFIRMED_RESPONSE::%error {
+    zeek::reject_protocol("error while parsing MMS Confirmed Response PDU");
+}

@@ -1,0 +1,80 @@
+protocol analyzer spicy::IEC61850_mms over TCP:
+	parse with IEC61850_MMS::tpkt_stream,
+	port 102/tcp;
+
+import IEC61850_MMS;
+import Zeek_MMS;
+
+# MMS PDU event
+on IEC61850_MMS::MMS_PDU -> event iec61850mms::MMS_PDU($conn, Zeek_MMS::convert_mmscode(self.mms_type), self.len.len);
+
+# MMS initiate request/response events
+on IEC61850_MMS::MMS_PDU if (self.id.tag == 8) -> event iec61850mms::INIT_REQU($conn, Zeek_MMS::extract_init_requ(self));
+on IEC61850_MMS::MMS_PDU if (self.id.tag == 9) -> event iec61850mms::INIT_RESP($conn, Zeek_MMS::extract_init_resp(self));
+
+# MMS confirmed service request/response event: status
+on IEC61850_MMS::CONFIRMED_REQUEST if (self.id.tag == 0) -> event iec61850mms::STATUS_REQU($conn, self.invokeID, self.status);
+on IEC61850_MMS::CONFIRMED_RESPONSE if (self.id.tag == 0) -> event iec61850mms::STATUS_RESP($conn, self.invokeID, Zeek_MMS::extract_status_resp(self));
+
+# MMS confirmed service request/response event: getNameList
+on IEC61850_MMS::CONFIRMED_REQUEST if (self.id.tag == 1) -> event iec61850mms::GETNAMELIST_REQU($conn, self.invokeID, Zeek_MMS::extract_getnamelist_requ(self));
+on IEC61850_MMS::CONFIRMED_RESPONSE if (self.id.tag == 1) -> event iec61850mms::GETNAMELIST_RESP($conn, self.invokeID, Zeek_MMS::extract_getnamelist_resp(self));
+
+# MMS confirmed service request/response event: identify
+on IEC61850_MMS::CONFIRMED_REQUEST if (self.id.tag == 2) -> event iec61850mms::IDENTIFY_REQU($conn, self.invokeID, self.identify);
+on IEC61850_MMS::CONFIRMED_RESPONSE if (self.id.tag == 2) -> event iec61850mms::IDENTIFY_RESP($conn, self.invokeID, Zeek_MMS::extract_identify_resp(self));
+
+# MMS confirmed service request/response event: read
+on IEC61850_MMS::CONFIRMED_REQUEST if (self.id.tag == 4) -> event iec61850mms::READ_REQU($conn, self.invokeID, Zeek_MMS::extract_read_requ(self));
+on IEC61850_MMS::CONFIRMED_RESPONSE if (self.id.tag == 4) -> event iec61850mms::READ_RESP($conn, self.invokeID, Zeek_MMS::extract_read_resp(self));
+
+# MMS confirmed service request/response event: write
+on IEC61850_MMS::CONFIRMED_REQUEST if (self.id.tag == 5) -> event iec61850mms::WRITE_REQU($conn, self.invokeID, Zeek_MMS::extract_write_requ(self));
+on IEC61850_MMS::CONFIRMED_RESPONSE if (self.id.tag == 5) -> event iec61850mms::WRITE_RESP($conn, self.invokeID, Zeek_MMS::extract_write_resp(self));
+
+# MMS confirmed service request/response event: getVariableAccessAttributes
+on IEC61850_MMS::CONFIRMED_REQUEST if (self.id.tag == 6) -> event iec61850mms::GETVARATTR_REQU($conn, self.invokeID, Zeek_MMS::extract_getvarattr_requ(self));
+on IEC61850_MMS::CONFIRMED_RESPONSE if (self.id.tag == 6) -> event iec61850mms::GETVARATTR_RESP($conn, self.invokeID, Zeek_MMS::extract_getvarattr_resp(self));
+
+# MMS confirmed service request/response event: defineNamedVariableList
+on IEC61850_MMS::CONFIRMED_REQUEST if (self.id.tag == 11) -> event iec61850mms::DEFVARLIST_REQU($conn, self.invokeID, Zeek_MMS::extract_defvarlist_requ(self));
+on IEC61850_MMS::CONFIRMED_RESPONSE if (self.id.tag == 11) -> event iec61850mms::DEFVARLIST_RESP($conn, self.invokeID, self.defineNamedVariableList);
+
+# MMS confirmed service request/response event: getNamedVarListAttr
+on IEC61850_MMS::CONFIRMED_REQUEST if (self.id.tag == 12) -> event iec61850mms::GETVARLISTATTR_REQU($conn, self.invokeID, Zeek_MMS::extract_getvarlistattr_requ(self));
+on IEC61850_MMS::CONFIRMED_RESPONSE if (self.id.tag == 12) -> event iec61850mms::GETVARLISTATTR_RESP($conn, self.invokeID, Zeek_MMS::extract_getvarlistattr_resp(self));
+
+# MMS confirmed service request/response event: deleteNamedVariableList
+on IEC61850_MMS::CONFIRMED_REQUEST if (self.id.tag == 13) -> event iec61850mms::DELVARLIST_REQU($conn, self.invokeID, Zeek_MMS::extract_delvarlist_requ(self));
+on IEC61850_MMS::CONFIRMED_RESPONSE if (self.id.tag == 13) -> event iec61850mms::DELVARLIST_RESP($conn, self.invokeID, Zeek_MMS::extract_delvarlist_resp(self));
+
+# MMS confirmed service request/response event: obtainFile
+on IEC61850_MMS::CONFIRMED_REQUEST if (self.id.tag == 46) -> event iec61850mms::OBFILE_REQU($conn, self.invokeID, Zeek_MMS::extract_obfile_requ(self));
+on IEC61850_MMS::CONFIRMED_RESPONSE if (self.id.tag == 46) -> event iec61850mms::OBFILE_RESP($conn, self.invokeID, self.obtainFile);
+
+# MMS confirmed service request/response event: fileOpen
+on IEC61850_MMS::CONFIRMED_REQUEST if (self.id.tag == 72) -> event iec61850mms::FILEOPEN_REQU($conn, self.invokeID, Zeek_MMS::extract_fileopen_requ(self));
+on IEC61850_MMS::CONFIRMED_RESPONSE if (self.id.tag == 72) -> event iec61850mms::FILEOPEN_RESP($conn, self.invokeID, Zeek_MMS::extract_fileopen_resp(self));
+
+# MMS confirmed service request/response event: fileRead
+on IEC61850_MMS::CONFIRMED_REQUEST if (self.id.tag == 73) -> event iec61850mms::FILEREAD_REQU($conn, self.invokeID, self.fileRead);
+on IEC61850_MMS::CONFIRMED_RESPONSE if (self.id.tag == 73) -> event iec61850mms::FILEREAD_RESP($conn, self.invokeID, Zeek_MMS::extract_fileread_resp(self));
+
+# MMS confirmed service request/response event: fileClose
+on IEC61850_MMS::CONFIRMED_REQUEST if (self.id.tag == 74) -> event iec61850mms::FILECLOSE_REQU($conn, self.invokeID, self.fileClose);
+on IEC61850_MMS::CONFIRMED_RESPONSE if (self.id.tag == 74) -> event iec61850mms::FILECLOSE_RESP($conn, self.invokeID, self.fileClose);
+
+# MMS confirmed service request/response event: fileRename
+on IEC61850_MMS::CONFIRMED_REQUEST if (self.id.tag == 75) -> event iec61850mms::FILERENAME_REQU($conn, self.invokeID, Zeek_MMS::extract_filerename_requ(self));
+on IEC61850_MMS::CONFIRMED_RESPONSE if (self.id.tag == 75) -> event iec61850mms::FILERENAME_RESP($conn, self.invokeID, self.fileRename);
+
+# MMS confirmed service request/response event: fileDelete
+on IEC61850_MMS::CONFIRMED_REQUEST if (self.id.tag == 76) -> event iec61850mms::FILEDEL_REQU($conn, self.invokeID, self.fileDelete);
+on IEC61850_MMS::CONFIRMED_RESPONSE if (self.id.tag == 76) -> event iec61850mms::FILEDEL_RESP($conn, self.invokeID, self.fileDelete);
+
+# MMS confirmed service request/response event: fileDir
+on IEC61850_MMS::CONFIRMED_REQUEST if (self.id.tag == 77) -> event iec61850mms::FILEDIR_REQU($conn, self.invokeID, Zeek_MMS::extract_filedir_requ(self));
+on IEC61850_MMS::CONFIRMED_RESPONSE if (self.id.tag == 77) -> event iec61850mms::FILEDIR_RESP($conn, self.invokeID, Zeek_MMS::extract_filedir_resp(self));
+
+# MMS unconfirmed service event: infoReport
+on IEC61850_MMS::UNCONFIRMED if (self.id.tag == 0) -> event iec61850mms::INFOREPORT($conn, Zeek_MMS::extract_inforep(self));

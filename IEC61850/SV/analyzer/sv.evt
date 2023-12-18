@@ -1,0 +1,7 @@
+import sv;
+import Zeek_sv;
+
+packet analyzer spicy::sv:
+	parse with sv::Message;
+
+on sv::Message -> event sv::sv_packet(self.appid, self.length, self.svID, self.smpCnt);

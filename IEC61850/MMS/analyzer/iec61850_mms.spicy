@@ -1,0 +1,558 @@
+module IEC61850_MMS;
+
+import mms_lib;
+import spicy;
+import ASN1;
+
+# TPDU Code
+type tpdu_code = enum {
+	CONREQ = 0xe0,
+	CONCON = 0xd0,
+	DISCONREQ = 0x80,
+	DISCONCON = 0xC0,
+	DATA = 0xf0,
+	EXPDATA = 0x10,
+	DATAACK = 0x60,
+	EXPDATAACK = 0x20,
+	REJECT = 0x50,
+	TPDUERR = 0x70
+};
+
+# SPDU Code
+type spdu_code = enum {
+	DATA = 0x01,
+	CONNECT = 0x0d,
+	ACCEPT = 0x0e,
+};
+
+# MMS Code
+type mms_code = enum {
+	CONFIRMED_REQUEST = 0,
+	CONFIRMED_RESPONSE = 1,
+	CONFIRMED_ERROR = 2,
+	UNCONFIRMED = 3,
+	REJECT = 4,
+	CANCEL_REQUEST = 5,
+	CANCEL_RESPONSE = 6,
+	CANCEL_ERROR = 7,
+	INITIATE_REQUEST = 8,
+	INITIATE_RESPONSE = 9,
+	INITIATE_ERROR = 10,
+	CONCLUDE_REQUEST = 11,
+	CONCLUDE_RESPONSE = 12,
+	CONCLUDE_ERROR = 13,
+};
+
+public type tpkt_stream = unit {
+	packages: TPKT[];
+};
+
+# ISO Transport over TCP (TPKT)
+type TPKT = unit {
+
+	# ...
+	version: uint8;
+	reserved: uint8;
+	length: uint16;
+
+	# Length indicator (LI)
+	li: uint8;
+
+	# TPDU code
+	code: uint8 &convert=tpdu_code($$);
+
+	# Skip to COTP user data
+	: bytes &size=self.li-1;
+
+	# Get COTP user data
+	spdu: SPDU(self.length) if ( self.code == tpdu_code::DATA );
+
+	on %error(msg: string) { print msg; print self; }
+
+};
+
+# Session protocol data unit (SPDU)
+type SPDU = unit ( tpkt_length: uint16 ) {
+
+	# Declaration
+	var data: bytes;
+
+	# Get SPDU type and length
+	s_type: uint8 &convert=spdu_code($$);
+	s_length: uint8;
+
+	# Get MMS Request, Response, PDU
+	switch ( self.s_type ){
+		spdu_code::CONNECT, spdu_code::ACCEPT -> {
+
+			# Get SPDU parameter fields
+			params: SPDU_PARA[] &size=self.s_length;
+
+			# Get ISO 8823 ACSE Association Request / Response
+			iso_8823: ASN1::ASN1Message(True) &parse-from=self.data;
+
+			# Get Connect Presentation PPDU, PDV-list and user data
+			cp_params: ASN1::ASN1Message(True)[] &parse-from=self.iso_8823.body.seq.submessages[1].application_data;
+			cp_pdv: ASN1::ASN1Message(True) &parse-from=self.cp_params.back().application_data;
+			cp_data: ASN1::ASN1Message(True) &parse-from=self.cp_pdv.body.seq.submessages[1].application_data;
+
+			# Get ISO 8650 AARE / AARQ PDU, user data and association data
+			aar: ASN1::ASN1Message(True)[] &parse-from=self.cp_data.application_data;
+			aar_data: ASN1::ASN1Message(True) &parse-from=self.aar.back().application_data;
+			aar_ass_data: ASN1::ASN1Message(True)[] &parse-from=self.aar_data.body.unimplemented_value;
+
+			# Get MMS request / response
+			mms: MMS_PDU &parse-from=self.aar_ass_data.back().application_data;
+
+		}
+		spdu_code::DATA -> {
+
+			# Skip to CPC-type PPDU
+			: bytes &size=2;
+
+			# Get ISO 8823 presentation CPC-type PPDU and PDV-list
+			iso_8823: ASN1::ASN1Message(True) &size=tpkt_length-11;
+			pdv: ASN1::ASN1Message(True) &parse-from=self.iso_8823.application_data;
+
+			# Get MMS PDU
+			mms: MMS_PDU &parse-from=self.pdv.body.seq.submessages[1].application_data;
+
+		}
+
+		* -> unknown: bytes &size=self.s_length;
+
+	};
+
+	# Get SPDU user data
+	on params {
+		for ( tlv in self.params ){
+			if (tlv.t == 193){
+				self.data = tlv.v;
+			}
+		}
+	}
+
+};
+
+# SPDU parameter field
+type SPDU_PARA = unit {
+
+	# Parameter type
+	t: uint8;
+
+	# Parameter length
+	l: uint8;
+
+	# Parameter value
+	v: bytes &size=self.l;
+};
+
+# MMS protocol data unit (PDU)
+public type MMS_PDU = unit {
+
+	# Declaration
+	var mms_type: mms_code;
+
+	# Get ASN.1 identifier
+	id: mms_lib::ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.mms_type ){
+
+		# Initiate request MMS
+		mms_code::INITIATE_REQUEST -> {
+			init_req: INIT_REQ[];
+		}
+
+		# Initiate response MMS
+		mms_code::INITIATE_RESPONSE -> {
+			init_resp: INIT_RESP[];
+		}
+
+		# Confirmed request MMS
+		mms_code::CONFIRMED_REQUEST -> {
+			conf_requ: CONFIRMED_REQUEST[];
+		}
+
+		# Confirmed response MMS
+		mms_code::CONFIRMED_RESPONSE -> {
+			conf_resp: CONFIRMED_RESPONSE[];
+		}
+
+		# Unconfirmed service MMS
+		mms_code::UNCONFIRMED -> {
+			unconf_pdu: UNCONFIRMED[];
+		}
+
+		# Conclude request service MMS
+		mms_code::CONCLUDE_REQUEST -> {
+			conclude_request_pdu: CONCLUDE_REQUEST;
+		}
+
+		# Conclude response service MMS
+		mms_code::CONCLUDE_RESPONSE -> {
+			conclude_response_pdu: CONCLUDE_RESPONSE;
+		}
+
+		# Not implemented MMS PDUs
+		* -> unknown: bytes &size=self.len.len;
+
+	};
+
+	# Get MMS code
+	on id {
+		self.mms_type = mms_code(self.id.tag);
+	}
+
+};
+
+# Initiate request MMS
+type INIT_REQ = unit {
+
+	# Get ASN.1 identifier
+	id: mms_lib::ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# Initiate request parameter: localDetailCalling
+		0 -> localDetailCalling: bytes &size=self.len.len &convert=$$.to_int(spicy::ByteOrder::Big);
+
+		# Initiate request parameter: proposedMaxServOutstandingCalling
+		1 -> proposedMaxServOutstandingCalling: bytes &size=self.len.len &convert=$$.to_int(spicy::ByteOrder::Big);
+
+		# Initiate request parameter: proposedMaxServOutstandingCalled
+		2 -> proposedMaxServOutstandingCalled: bytes &size=self.len.len &convert=$$.to_int(spicy::ByteOrder::Big);
+
+		# Initiate request parameter: proposedDataStructureNestingLevel
+		3 -> proposedDataStructureNestingLevel: bytes &size=self.len.len &convert=$$.to_int(spicy::ByteOrder::Big);
+
+		# Initiate request details
+		4 -> initRequestDetail: INIT_REQ_DETAIL[] &size=self.len.len;
+
+	};
+
+};
+
+# Initiate request MMS details
+type INIT_REQ_DETAIL = unit {
+
+	# Get ASN.1 identifier
+	id: mms_lib::ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# Initiate request parameter: proposedVersionNumber
+		0 -> proposedVersionNumber: bytes &size=self.len.len &convert=$$.to_int(spicy::ByteOrder::Big);
+
+		# Initiate request parameter: proposedParameterCBB & paraSupportOptions
+		1 -> {
+			proposedParameterCBB: ASN1::ASN1BitString(self.len.len, self.id.constructed);
+			paraSupportOptions: mms_lib::PARA_SUPPORT_OPTIONS &parse-from=self.proposedParameterCBB.value_bits;
+		}
+
+		# Initiate request parameter: servicesSupportedCalling & serviceSupportOptions
+		2 -> {
+			servicesSupportedCalling: ASN1::ASN1BitString(self.len.len, self.id.constructed);
+			serviceSupportOptions: mms_lib::SERVICE_SUPPORT_OPTIONS &parse-from=self.servicesSupportedCalling.value_bits;
+		}
+
+		# Initiate request parameter: additionalSupportedCalling & addSupportOptions
+		3 -> {
+			additionalSupportedCalling: ASN1::ASN1BitString(self.len.len, self.id.constructed);
+			addSupportOptions: mms_lib::ADDITIONAL_SUPPORT_OPTIONS &parse-from=self.additionalSupportedCalling.value_bits;
+		}
+
+		# Initiate request parameter: additionalCbbSupportedCalling
+		4 -> additionalCbbSupportedCalling: ASN1::ASN1BitString(self.len.len, self.id.constructed);
+
+		# Initiate request parameter: privilegeClassIdentityCalling
+		5 -> privilegeClassIdentityCalling: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::UTF8);
+
+	};
+
+};
+
+# Initiate response MMS
+type INIT_RESP = unit {
+
+	# Get ASN.1 identifier
+	id: mms_lib::ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# Initiate response parameter: localDetailCalled
+		0 -> localDetailCalled: bytes &size=self.len.len &convert=$$.to_int(spicy::ByteOrder::Big);
+
+		# Initiate response parameter: negotiatedMaxServOutstandingCalling
+		1 -> negotiatedMaxServOutstandingCalling: bytes &size=self.len.len &convert=$$.to_int(spicy::ByteOrder::Big);
+
+		# Initiate response parameter: negotiatedMaxServOutstandingCalled
+		2 -> negotiatedMaxServOutstandingCalled: bytes &size=self.len.len &convert=$$.to_int(spicy::ByteOrder::Big);
+
+		# Initiate response parameter: negotiatedDataStructureNestingLevel
+		3 -> negotiatedDataStructureNestingLevel: bytes &size=self.len.len &convert=$$.to_int(spicy::ByteOrder::Big);
+
+		# Initiate response details
+		4 -> initResponseDetail: INIT_RESP_DETAIL[] &size=self.len.len;
+
+	};
+
+};
+
+# Initiate response MMS details
+type INIT_RESP_DETAIL = unit {
+
+	# Get ASN.1 identifier
+	id: mms_lib::ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# Initiate response parameter: negotiatedVersionNumber
+		0 -> negotiatedVersionNumber: bytes &size=self.len.len &convert=$$.to_int(spicy::ByteOrder::Big);
+
+		# Initiate response parameter: negotiatedParameterCBB & paraSupportOptions
+		1 -> {
+			negotiatedParameterCBB: ASN1::ASN1BitString(self.len.len, self.id.constructed);
+			paraSupportOptions: mms_lib::PARA_SUPPORT_OPTIONS &parse-from=self.negotiatedParameterCBB.value_bits;
+		}
+
+		# Initiate response parameter: servicesSupportedCalled & serviceSupportOptions
+		2 -> {
+			servicesSupportedCalled: ASN1::ASN1BitString(self.len.len, self.id.constructed);
+			serviceSupportOptions: mms_lib::SERVICE_SUPPORT_OPTIONS &parse-from=self.servicesSupportedCalled.value_bits;
+		}
+
+		# Initiate response parameter: additionalSupportedCalled & addSupportOptions
+		3 -> {
+			additionalSupportedCalled: ASN1::ASN1BitString(self.len.len, self.id.constructed);
+			addSupportOptions: mms_lib::ADDITIONAL_SUPPORT_OPTIONS &parse-from=self.additionalSupportedCalled.value_bits;
+		}
+
+		# Initiate response parameter: additionalCbbSupportedCalled
+		4 -> additionalCbbSupportedCalled: ASN1::ASN1BitString(self.len.len, self.id.constructed);
+
+		# Initiate response parameter: privilegeClassIdentityCalled
+		5 -> privilegeClassIdentityCalled: ASN1::ASN1OctetString(self.len.len, self.id.constructed) &convert=$$.value.decode(hilti::Charset::UTF8);
+
+	};
+
+};
+
+# Confirmed request MMS
+public type CONFIRMED_REQUEST = unit {
+
+	# Declaration
+	var invokeID: int64;
+	var fileDelete: string;
+
+	# ASN.1 message for invoke ID
+	data: ASN1::ASN1Message(True);
+
+	# Get ASN.1 identifier
+	id: mms_lib::ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ) {
+
+		# Status
+		0 -> status: uint8 &convert=cast<bool>($$) &requires=self.len.len==1;
+
+		# Get name list
+		1 -> getnamelist: mms_lib::GET_NAME_LIST_REQUEST[] &size=self.len.len;
+
+		# Identify
+		2 -> {
+			var identify: bool = True;
+		}
+
+		# Read
+		4 -> read: mms_lib::READ_REQUEST[] &size=self.len.len;
+
+		# Write
+		5 -> write: mms_lib::WRITE_REQUEST[] &size=self.len.len;
+
+		# Get variable access attributes
+		6 -> getVariableAccessAttributes: mms_lib::GET_VAR_ACCESS_ATTR_REQUEST[] &size=self.len.len;
+
+		# Define named variable list
+		11 -> defineNamedVariableList: mms_lib::DEF_NAMED_VAR_LIST[] &size=self.len.len;
+
+		# Get named variable list attributes
+		12 -> getnamedvarlistattr: mms_lib::OBJECT_NAME &size=self.len.len;
+
+		# Delete named variable list
+		13 -> deleteNamedVariableList: mms_lib::DELETE_NAMED_VARIABLELIST_REQUEST[] &size=self.len.len;
+
+		# Obtain file
+		46 -> obtainFile: mms_lib::OBTAIN_FILE[] &size=self.len.len;
+
+		# File open
+		72 -> fileOpen: mms_lib::FILE_OPEN_REQUEST[] &size=self.len.len;
+
+		# File read
+		73 -> fileRead: bytes &size=self.len.len &convert=$$.to_uint(spicy::ByteOrder::Big);
+
+		# File close
+		74 -> fileClose: bytes &size=self.len.len &convert=$$.to_uint(spicy::ByteOrder::Big);
+
+		# File rename
+		75 -> fileRename: mms_lib::FILE_RENAME[] &size=self.len.len;
+
+		# File delete
+		76 -> {
+			: ASN1::ASN1Message(True) &size=self.len.len {
+				self.fileDelete = $$.body.str_value;
+			}
+		}
+
+		# File directory
+		77 -> fileDir: mms_lib::FILE_DIR_REQUEST[] &size=self.len.len;
+
+		# Not implemented MMS requests
+		* -> unknown: bytes &size=self.len.len;
+
+	};
+
+	# Get invocation ID
+	on data {
+		self.invokeID = self.data.body.num_value;
+	}
+
+};
+
+# Confirmed response MMS
+public type CONFIRMED_RESPONSE = unit {
+
+	# Declaration
+	var invokeID: int64;
+
+	# ASN.1 message for invoke ID
+	data: ASN1::ASN1Message(True);
+
+	# Get ASN.1 identifier
+	id: mms_lib::ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ) {
+
+		# Status
+		0 -> status: mms_lib::STATUS_RESPONSE[] &size=self.len.len;
+
+		# Get name list
+		1 -> getnamelist: mms_lib::GET_NAME_LIST_RESPONSE[] &size=self.len.len;
+
+		# Identify
+		2 -> identify: mms_lib::IDENTIFY[] &size=self.len.len;
+
+		# Read
+		4 -> read: mms_lib::READ_RESPONSE[] &size=self.len.len;
+
+		# Write
+		5 -> write: mms_lib::WRITE_RESPONSE[] &size=self.len.len;
+
+		# Get variable access attributes
+		6 -> getVariableAccessAttributes: mms_lib::GET_VAR_ACCESS_ATTR_RESPONSE[] &size=self.len.len;
+
+		# Define named variable list
+		11 -> {
+			var defineNamedVariableList: bool = True;
+		}
+
+		# Get named variable list attributes
+		12 -> getnamedvarlistattr: mms_lib::GET_NAMED_VAR_LIST_ATTR[] &size=self.len.len;
+
+		# Delete named variable list
+		13 -> deleteNamedVariableList: mms_lib::DELETE_NAMED_VARIABLELIST_RESPONSE[] &size=self.len.len;
+
+		# Obtain file
+		46 -> {
+			var obtainFile: bool = True;
+		}
+
+		# File open
+		72 -> fileOpen: mms_lib::FILE_OPEN_RESPONSE[] &size=self.len.len;
+
+		# File read
+		73 -> fileRead: mms_lib::FILE_READ[] &size=self.len.len;
+
+		# File close
+		74 -> {
+			var fileClose: bool = True;
+		}
+		
+		# File rename
+		75 -> {
+			var fileRename: bool = True;
+		}
+
+		# File delete
+		76 -> {
+			var fileDelete: bool = True;
+		}
+
+		# File directory
+		77 -> fileDir: mms_lib::FILE_DIR_RESPONSE[] &size=self.len.len;
+
+		# Not implemented MMS responses
+		* -> unknown: bytes &size=self.len.len;
+
+	};
+
+	# Get invocation ID
+	on data {
+		self.invokeID = self.data.body.num_value;
+	}
+
+};
+
+# Unconfirmed MMS
+type UNCONFIRMED = unit {
+
+	# Get ASN.1 identifier
+	id: mms_lib::ID;
+
+	# Get ASN.1 length
+	len: ASN1::LengthType;
+
+	switch ( self.id.tag ){
+
+		# Information report
+		0 -> infoReport: mms_lib::INFORMATION_REPORT &size=self.len.len;
+
+		# Unsolicited status --> not implemented
+		1 -> unsolicitedStatus: bytes &size=self.len.len;
+
+		# Event notification --> not implemented
+		2 -> eventNotification:  bytes &size=self.len.len;
+
+	};
+
+};
+
+# Conclude request MMS
+type CONCLUDE_REQUEST = unit{
+	var conclude_request: bool = True;
+};
+
+# Conclude response MMS
+type CONCLUDE_RESPONSE = unit{
+	var conclude_reponse: bool = True;
+};

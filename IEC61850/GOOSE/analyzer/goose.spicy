@@ -1,0 +1,109 @@
+
+module goose;
+
+import spicy;
+import zeek;
+import ASN1;
+
+public type Message = unit {
+
+	appid: uint16;
+	length: uint16;
+	reserved1: bytes &size=2;
+	reserved2: bytes &size=2;
+
+	# Structure 61850_8_1_specific_protocol
+	# IEC 61850-8-1 Specific Protocol ::= CHOICE {
+	#	gseMngtPdu 	[APPLICATION 0] IMPLICIT GSEMngtPdu,
+	#	goosePdu 	[APPLICATION 1] IMPLICIT IECGoosePdu,
+	#	… }
+
+	goosePDU: ASN1::ASN1Message(True)[] &eod;
+
+	# IECGoosePdu ::= SEQUENCE {
+	# 	gocbRef 			[0] IMPLICIT 	VISIBLE-STRING,
+	#	timeAllowedtoLive 	[1] IMPLICIT 	INTEGER,
+	#	datSet 				[2] IMPLICIT 	VISIBLE-STRING,
+	#   goID 				[3] IMPLICIT 	VISIBLE-STRING OPTIONAL,
+	#	T 					[4] IMPLICIT 	UtcTime,
+	#	stNum 				[5] IMPLICIT 	INTEGER,
+	#	sqNum 				[6] IMPLICIT 	INTEGER,
+	#	simulation 			[7] IMPLICIT 	BOOLEAN DEFAULT FALSE,
+	#	confRev 			[8] IMPLICIT 	INTEGER,
+	#	ndsCom 				[9] IMPLICIT 	BOOLEAN DEFAULT FALSE,
+	#	numDatSetEntries 	[10] IMPLICIT 	INTEGER,
+	#	allData 			[11] IMPLICIT 	SEQUENCE OF Data,
+	#	}
+
+	# Variable Declarations
+	var gocbRef: string;
+	var timeAllowedtoLive: uint64;
+	var datSet: string;
+	var goID: string &optional;
+	var T: bytes;
+	var stNum: uint64;
+	var sqNum: uint64;
+	var simulation: bool;
+	var confRev: uint64;
+	var ndsCom: bool;
+	var numDatSetEntries: uint64;
+
+	goosePDUdata: ASN1::ASN1Message(True)[] &parse-from=self.goosePDU.front().application_data;
+
+	allData: ASN1::ASN1Message(True)[] &parse-from=self.goosePDUdata.back().application_data;
+
+	var timestamp: bytes;
+	var encoding: hilti::Charset;
+	var value: string;
+	var first_part: bytes;
+	var second_part: bytes;
+	var SecondSinceEpoch: time;
+	var FractionOfSecond: uint64;
+	var TimeQuality: bytes;
+
+	on goosePDUdata {
+		for ( element in self.goosePDUdata ) {
+			local tag = element.application_id;
+
+			switch (tag) {
+				case 0: {self.gocbRef = element.application_data.decode(); }
+				case 1: {self.timeAllowedtoLive =  element.application_data.to_uint(spicy::ByteOrder::Big); }
+				case 2: {self.datSet =  element.application_data.decode(); }
+				case 3: {self.goID  =  element.application_data.decode(); }
+				case 4: {
+					self.T = element.application_data;
+					# UtcTime ::= OCTET STRING(8) representing the elapsed number of whose seconds since GMT
+					# midnight January 1, 1970, see CCIR Recommendation 460-4 (1986).
+					self.SecondSinceEpoch = self.T.sub(0, 4).to_time(spicy::ByteOrder::Big);
+					self.FractionOfSecond = self.T.sub(4, 7).to_uint(spicy::ByteOrder::Big);
+					self.TimeQuality = self.T.sub(7, 8);
+				}
+				case 5: {self.stNum = element.application_data.to_uint(spicy::ByteOrder::Big); }
+				case 6: {self.sqNum = element.application_data.to_uint(spicy::ByteOrder::Big); }
+				case 7: {self.simulation = element.application_data.to_uint(spicy::ByteOrder::Big) != 0; }
+				case 8: {self.confRev = element.application_data.to_uint(spicy::ByteOrder::Big); }
+				case 9: {self.ndsCom = element.application_data.to_uint(spicy::ByteOrder::Big) != 0; }
+				case 10: {self.numDatSetEntries = element.application_data.to_uint(spicy::ByteOrder::Big); }
+				case 11: {
+					# Decoding of allData
+					# in case data from allData is needed or you want to log specific data elements
+					# add here further decoding of all Data
+					}
+				default: {print "error in tlv decoding, tag not implemented:"; print tag;}
+			}
+		}
+	}
+
+	on %done {
+		# print self;
+	}
+
+	on %error(msg: string) {
+		print msg;
+	}
+
+	on %init() {
+		self.simulation = False;
+		self.ndsCom = False;
+	}
+};

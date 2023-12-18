@@ -1,0 +1,96 @@
+# Set up protocol confirmation/rejection for analyzers, as well as any further
+# Zeek-specific analysis.
+
+module Zeek_IEC60870_5_104;
+
+import IEC60870_5_104;
+import zeek;
+
+# TODO: Protocol analyzers should confirm once they are reasonably sure that
+# they are indeed parsing the right protocol. Pick a unit that's a little bit
+# into the parsing process here.
+#
+# on IEC60870_5_104::SUITABLE_UNIT {
+#     zeek::confirm_protocol();
+# }
+
+# Any error bubbling up to the top unit will trigger a protocol rejection.
+on IEC60870_5_104::APDU::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 APDU");
+}
+
+on IEC60870_5_104::IO::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 IO");
+}
+
+on IEC60870_5_104::COI::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 COI");
+}
+
+on IEC60870_5_104::BCR::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 BCR");
+}
+
+on IEC60870_5_104::DCO::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 DCO");
+}
+
+on IEC60870_5_104::DIQ::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 DIQ");
+}
+
+on IEC60870_5_104::NVA::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 NVA");
+}
+
+on IEC60870_5_104::QCC::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 QCC");
+}
+
+on IEC60870_5_104::QDS::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 QDS");
+}
+
+on IEC60870_5_104::QOI::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 QOI");
+}
+
+on IEC60870_5_104::QOS::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 QOS");
+}
+
+on IEC60870_5_104::RCO::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 RCO");
+}
+
+on IEC60870_5_104::SCO::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 SCO");
+}
+
+on IEC60870_5_104::SCO::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 SCO");
+}
+
+on IEC60870_5_104::SEP::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 SEP");
+}
+
+on IEC60870_5_104::SIQ::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 SIQ");
+}
+
+on IEC60870_5_104::SVA::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 SVA");
+}
+
+on IEC60870_5_104::VTI::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 VTI");
+}
+
+on IEC60870_5_104::CP16Time2a::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 CP16Time2a");
+}
+
+on IEC60870_5_104::ShortFloat::%error {
+    zeek::reject_protocol("error while parsing IEC60870_5_104 ShortFloat");
+}

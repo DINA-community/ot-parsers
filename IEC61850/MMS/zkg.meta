@@ -1,0 +1,23 @@
+[package]
+script_dir = scripts
+test_command = cd testing && btest -c btest.cfg
+summary = TODO: A summary of IEC61850-8-1-MMS in one line
+description = TODO: A more detailed description of IEC61850-8-1-MMS.
+	It can span multiple lines, with this indentation.
+depends = 
+	zeek >=4.0.0
+build_command = mkdir -p build && cd build && SPICYZ=$(command -v spicyz || echo %(package_base)s/spicy-plugin/build/bin/spicyz) cmake .. && cmake --build .
+
+[template]
+source = https://github.com/zeek/package-template
+version = v2.0.0
+zkg_version = 2.13.0
+features = spicy-protocol-analyzer
+
+[template_vars]
+name = IEC61850-8-1-MMS
+analyzer = MMS
+protocol = TCP
+unit_orig = Request
+unit_resp = Response
+

@@ -1,0 +1,42 @@
+import IEC60870_5_104;
+import Zeek_IEC60870_5_104;
+
+protocol analyzer spicy::IEC60870_5_104 over TCP:
+	parse with IEC60870_5_104::APDUs,
+	port 2404/tcp;
+
+on IEC60870_5_104::APDU -> event iec60870_5_104::apdu($conn, self.asdu_length, self.apdu_type, self.send_num, self.rec_num);
+
+on IEC60870_5_104::ASDU -> event iec60870_5_104::asdu($conn, self.ioa_num, self.cot, self.asdu_id, self.origin, self.asdu_address, self.con);
+
+on IEC60870_5_104::IO -> event iec60870_5_104::io($conn, self.address);
+
+on IEC60870_5_104::IE if ( asdu_id==1 ) -> event iec60870_5_104::M_SP_NA_1($conn, self.siq.state_on, self.siq.state_off, self.siq.blocked, self.siq.substituted, self.siq.topical, self.siq.valid);
+
+on IEC60870_5_104::IE if ( asdu_id==3 ) -> event iec60870_5_104::M_DP_NA_1($conn, self.diq.state_on, self.diq.state_off, self.diq.indeterminate0, self.diq.indeterminate3, self.diq.blocked, self.diq.substituted, self.diq.topical, self.diq.valid);
+
+on IEC60870_5_104::IE if ( asdu_id==5 ) -> event iec60870_5_104::M_ST_NA_1($conn, self.vti.value, self.vti.transient, self.qds.overflow, self.qds.blocked, self.qds.substituted, self.qds.topical, self.qds.valid);
+
+on IEC60870_5_104::IE if ( asdu_id==9 ) -> event iec60870_5_104::M_ME_NA_1($conn, self.nva.nva, self.qds.overflow, self.qds.blocked, self.qds.substituted, self.qds.topical, self.qds.valid);
+
+on IEC60870_5_104::IE if ( asdu_id==11 ) -> event iec60870_5_104::M_ME_NB_1($conn, self.sva.sva, self.qds.overflow, self.qds.blocked, self.qds.substituted, self.qds.topical, self.qds.valid);
+
+on IEC60870_5_104::IE if ( asdu_id==13 ) -> event iec60870_5_104::M_ME_NC_1($conn, self.shortfloat.shortfloat, self.qds.overflow, self.qds.blocked, self.qds.substituted, self.qds.topical, self.qds.valid);
+
+on IEC60870_5_104::IE if ( asdu_id==30 ) -> event iec60870_5_104::M_SP_TB_1($conn, self.siq.state_on, self.siq.state_off, self.siq.blocked, self.siq.substituted, self.siq.topical, self.siq.valid, self.cp56time.minutes, self.cp56time.hours, self.cp56time.day, self.cp56time.dow, self.cp56time.month, self.cp56time.year, self.cp56time.su, self.cp56time.valid);
+
+on IEC60870_5_104::IE if ( asdu_id==31 ) -> event iec60870_5_104::M_DP_TB_1($conn, self.diq.state_on, self.diq.state_off, self.diq.indeterminate0, self.diq.indeterminate3, self.diq.blocked, self.diq.substituted, self.diq.topical, self.diq.valid, self.cp56time.minutes, self.cp56time.hours, self.cp56time.day, self.cp56time.dow, self.cp56time.month, self.cp56time.year, self.cp56time.su, self.cp56time.valid);
+
+on IEC60870_5_104::IE if ( asdu_id==32 ) -> event iec60870_5_104::M_ST_TB_1($conn, self.vti.value, self.vti.transient, self.qds.overflow, self.qds.blocked, self.qds.substituted, self.qds.topical, self.qds.valid, self.cp56time.minutes, self.cp56time.hours, self.cp56time.day, self.cp56time.dow, self.cp56time.month, self.cp56time.year, self.cp56time.su, self.cp56time.valid);
+
+on IEC60870_5_104::IE if ( asdu_id==34 ) -> event iec60870_5_104::M_ME_TD_1($conn, self.nva.nva, self.qds.overflow, self.qds.blocked, self.qds.substituted, self.qds.topical, self.qds.valid, self.cp56time.minutes, self.cp56time.hours, self.cp56time.day, self.cp56time.dow, self.cp56time.month, self.cp56time.year, self.cp56time.su, self.cp56time.valid);
+
+on IEC60870_5_104::IE if ( asdu_id==35 ) -> event iec60870_5_104::M_ME_TE_1($conn, self.sva.sva, self.qds.overflow, self.qds.blocked, self.qds.substituted, self.qds.topical, self.qds.valid, self.cp56time.minutes, self.cp56time.hours, self.cp56time.day, self.cp56time.dow, self.cp56time.month, self.cp56time.year, self.cp56time.su, self.cp56time.valid);
+
+on IEC60870_5_104::IE if ( asdu_id==36 ) -> event iec60870_5_104::M_ME_TF_1($conn, self.shortfloat.shortfloat, self.qds.overflow, self.qds.blocked, self.qds.substituted, self.qds.topical, self.qds.valid, self.cp56time.minutes, self.cp56time.hours, self.cp56time.day, self.cp56time.dow, self.cp56time.month, self.cp56time.year, self.cp56time.su, self.cp56time.valid);
+
+on IEC60870_5_104::IE if ( asdu_id==70 ) -> event iec60870_5_104::M_EI_NA_1($conn, self.coi.localpoweron, self.coi.localmanualreset, self.coi.remotereset, self.coi.unchangedparams);
+
+on IEC60870_5_104::IE if ( asdu_id==100 ) -> event iec60870_5_104::C_IC_NA_1($conn, self.qoi.stationinterrogation, self.qoi.qoi);
+
+on IEC60870_5_104::IE if ( asdu_id==101 ) -> event iec60870_5_104::C_CI_NA_1($conn, self.qcc.nocounter, self.qcc.group1counter, self.qcc.group2counter, self.qcc.group3counter, self.qcc.group4counter, self.qcc.generalcounter, self.qcc.readonly, self.qcc.freeze, self.qcc.reset, self.qcc.freezeandreset);

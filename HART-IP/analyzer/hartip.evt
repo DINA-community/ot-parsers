@@ -1,0 +1,31 @@
+import HARTIP;
+import Zeek_HARTIP;
+
+# Make Enums accessible to Zeek Script
+export HART_IP_ENUMS::ExpandedDeviceTypeCodes;
+export HART_IP_ENUMS::ManufacturerIdentificationCodes;
+
+##########################################################################################
+## Network Management Specification                                                     ##
+## HCF_SPEC-085, FCG TS20085 Rev 3.0.1                                                  ##
+## 10.1.1 HART IP Servers                                                               ##
+## "HART-IP servers support session-oriented communications with clients.               ##
+##  To instantiate a session, servers must listen to the well-known TCP/IP port 5094."  ##
+##########################################################################################
+protocol analyzer spicy::HARTIP over TCP:
+    parse with HARTIP::Packets,
+    port 5094/tcp;
+
+on HARTIP::ReadUniqueIdentifier -> event HARTIP::read_device_info(
+    $conn,
+    self.exp_dev_type,
+    self.dev_id,
+    self.manufacture_id,
+    self.private_label);
+
+on HARTIP::ReadSubDeviceIdentitySummary -> event HARTIP::read_subdevice_info(
+    $conn,
+    self.exp_dev_type,
+    self.dev_id,
+    self.manufacture_id,
+    self.long_tag);

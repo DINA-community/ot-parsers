@@ -1,0 +1,16 @@
+# Set up protocol confirmation/rejection for analyzers, as well as any further
+# Zeek-specific analysis.
+
+module Zeek_HARTIP;
+
+import HARTIP;
+import zeek;
+
+on HARTIP::Packets::%done {
+    zeek::confirm_protocol();
+}
+
+# Any error bubbling up to the top unit will trigger a protocol rejection.
+on HARTIP::Packets::%error {
+    zeek::reject_protocol("error while parsing HARTIP");
+}

@@ -1,0 +1,6 @@
+import goose;
+
+packet analyzer spicy::goose:
+    parse with goose::Message;
+
+on goose::Message -> event goose::goose_packet(self.appid, self.length, self.gocbRef, self.timeAllowedtoLive, self.datSet, self.SecondSinceEpoch, self.stNum, self.sqNum, self.simulation, self.confRev, self.ndsCom, self.numDatSetEntries);

@@ -1,0 +1,22 @@
+[package]
+script_dir = scripts
+test_command = cd testing && btest -c btest.cfg
+summary = A Zeek Spicy parser for HART-IP protocol on tcp/5094.
+description = spicy-hartip parses HART-IP packets to extract HART device information and write to hartip.log.
+depends = 
+	zeek >=4.0.0
+build_command = mkdir -p build && cd build && SPICYZ=$(command -v spicyz || echo %(package_base)s/spicy-plugin/build/bin/spicyz) cmake .. && cmake --build .
+
+[template]
+source = https://github.com/zeek/package-template
+version = v2.0.0
+zkg_version = 2.13.0-26
+features = spicy-protocol-analyzer
+
+[template_vars]
+name = spicy-hartip
+analyzer = HARTIP
+protocol = TCP
+unit_orig = Packets
+unit_resp = Packets
+
