@@ -31,6 +31,9 @@ export {
 		indeterminate3: vector of bool &log &optional;
 		vti_value: vector of int &log &optional;
 		vti_transient: vector of bool &log &optional;
+
+		bsi: vector of string &log &optional;
+
 		nva: vector of int &log &optional;
 		sva: vector of int &log &optional;
 		shortfloat: vector of double &log &optional;
@@ -123,6 +126,11 @@ function set_diq(c: connection){
 	c$rec$substituted = vector();
 	c$rec$topical = vector();
 	c$rec$valid = vector();
+}
+
+# Set Bit string of 32 bit (BSI)
+function set_bsi(c: connection){
+	c$rec$bsi = vector();
 }
 
 # Set normalized value (NVA)
@@ -292,6 +300,28 @@ event iec60870_5_104::M_ST_NA_1(c: connection, value: int, transient: bool, over
 	c$rec$valid += valid;
 }
 
+# Binary state information with quality descriptor (M_BO_NA_1)
+event iec60870_5_104::M_BO_NA_1(c: connection, bsi: string, overflow: bool, blocked: bool, substituted: bool, topical: bool, valid: bool){
+	if ( !c?$rec ){
+		init_rec(c);
+		c$rec$ioa = vector();
+		set_bsi(c);
+		set_qds(c);
+	} else {
+		if ( !c$rec?$ioa){
+			c$rec$ioa = vector();
+			set_bsi(c);
+			set_qds(c);
+		}
+	}
+	c$rec$bsi += bsi;
+	c$rec$overflow += overflow;
+	c$rec$blocked += blocked;
+	c$rec$substituted += substituted;
+	c$rec$topical += topical;
+	c$rec$valid += valid;
+}
+
 # Normalized value without time tag event (M_ME_NA_1)
 event iec60870_5_104::M_ME_NA_1(c: connection, nva: int, overflow: bool, blocked: bool, substituted: bool, topical: bool, valid: bool){
 	if ( !c?$rec ){
@@ -453,6 +483,38 @@ event iec60870_5_104::M_ST_TB_1(c: connection, value: int, transient: bool, over
 	c$rec$cp56_valid += cp56_valid;
 }
 
+# Binary state information with CP56Time2a time tag event (M_BO_TB_1)
+event iec60870_5_104::M_BO_TB_1(c: connection, bsi: string, overflow: bool, blocked: bool, substituted: bool, topical: bool, valid: bool, cp56_minutes: int, cp56_hours: int, cp56_day: int, cp56_dow: int, cp56_month: int, cp56_year: int, cp56_su: bool, cp56_valid: bool){
+	if ( !c?$rec ){
+		init_rec(c);
+		c$rec$ioa = vector();
+		set_bsi(c);
+		set_qds(c);
+		set_cp56(c);
+	} else {
+		if ( !c$rec?$ioa){
+			c$rec$ioa = vector();
+			set_bsi(c);
+			set_qds(c);
+			set_cp56(c);
+		}
+	}
+	c$rec$bsi += bsi;
+	c$rec$overflow += overflow;
+	c$rec$blocked += blocked;
+	c$rec$substituted += substituted;
+	c$rec$topical += topical;
+	c$rec$valid += valid;
+	c$rec$cp56_minutes += cp56_minutes;
+	c$rec$cp56_hours += cp56_hours;
+	c$rec$cp56_day += cp56_day;
+	c$rec$cp56_dow += cp56_dow;
+	c$rec$cp56_month += cp56_month;
+	c$rec$cp56_year += cp56_year;
+	c$rec$cp56_su += cp56_su;
+	c$rec$cp56_valid += cp56_valid;
+}
+
 # Normalized value with CP56Time2a time tag event (M_ME_TD_1)
 event iec60870_5_104::M_ME_TD_1(c: connection, nva: int, overflow: bool, blocked: bool, substituted: bool, topical: bool, valid: bool, cp56_minutes: int, cp56_hours: int, cp56_day: int, cp56_dow: int, cp56_month: int, cp56_year: int, cp56_su: bool, cp56_valid: bool){
 	if ( !c?$rec ){
@@ -547,6 +609,21 @@ event iec60870_5_104::M_ME_TF_1(c: connection, shortfloat: double, overflow: boo
 	c$rec$cp56_year += cp56_year;
 	c$rec$cp56_su += cp56_su;
 	c$rec$cp56_valid += cp56_valid;
+}
+
+# Binary state information (C_BO_NA_1)
+event iec60870_5_104::C_BO_NA_1(c: connection, bsi: string){
+	if ( !c?$rec ){
+		init_rec(c);
+		c$rec$ioa = vector();
+		set_bsi(c);
+	} else {
+		if ( !c$rec?$ioa){
+			c$rec$ioa = vector();
+			set_bsi(c);
+		}
+	}
+	c$rec$bsi += bsi;
 }
 
 # End of initialization event (M_EI_NA_1)
