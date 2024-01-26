@@ -5,3 +5,4 @@
 testing/
 .gitlab-ci.yml
 
+*.pcap
