@@ -17,6 +17,8 @@ on IEC60870_5_104::IE if ( asdu_id==3 ) -> event iec60870_5_104::M_DP_NA_1($conn
 
 on IEC60870_5_104::IE if ( asdu_id==5 ) -> event iec60870_5_104::M_ST_NA_1($conn, self.vti.value, self.vti.transient, self.qds.overflow, self.qds.blocked, self.qds.substituted, self.qds.topical, self.qds.valid);
 
+on IEC60870_5_104::IE if ( asdu_id==7 ) -> event iec60870_5_104::M_BO_NA_1($conn, self.bsi.bits, self.qds.overflow, self.qds.blocked, self.qds.substituted, self.qds.topical, self.qds.valid);
+
 on IEC60870_5_104::IE if ( asdu_id==9 ) -> event iec60870_5_104::M_ME_NA_1($conn, self.nva.nva, self.qds.overflow, self.qds.blocked, self.qds.substituted, self.qds.topical, self.qds.valid);
 
 on IEC60870_5_104::IE if ( asdu_id==11 ) -> event iec60870_5_104::M_ME_NB_1($conn, self.sva.sva, self.qds.overflow, self.qds.blocked, self.qds.substituted, self.qds.topical, self.qds.valid);
@@ -29,11 +31,17 @@ on IEC60870_5_104::IE if ( asdu_id==31 ) -> event iec60870_5_104::M_DP_TB_1($con
 
 on IEC60870_5_104::IE if ( asdu_id==32 ) -> event iec60870_5_104::M_ST_TB_1($conn, self.vti.value, self.vti.transient, self.qds.overflow, self.qds.blocked, self.qds.substituted, self.qds.topical, self.qds.valid, self.cp56time.minutes, self.cp56time.hours, self.cp56time.day, self.cp56time.dow, self.cp56time.month, self.cp56time.year, self.cp56time.su, self.cp56time.valid);
 
+on IEC60870_5_104::IE if ( asdu_id==33 ) -> event iec60870_5_104::M_BO_TB_1($conn, self.bsi.bits, self.qds.overflow, self.qds.blocked, self.qds.substituted, self.qds.topical, self.qds.valid, self.cp56time.minutes, self.cp56time.hours, self.cp56time.day, self.cp56time.dow, self.cp56time.month, self.cp56time.year, self.cp56time.su, self.cp56time.valid);
+
 on IEC60870_5_104::IE if ( asdu_id==34 ) -> event iec60870_5_104::M_ME_TD_1($conn, self.nva.nva, self.qds.overflow, self.qds.blocked, self.qds.substituted, self.qds.topical, self.qds.valid, self.cp56time.minutes, self.cp56time.hours, self.cp56time.day, self.cp56time.dow, self.cp56time.month, self.cp56time.year, self.cp56time.su, self.cp56time.valid);
 
 on IEC60870_5_104::IE if ( asdu_id==35 ) -> event iec60870_5_104::M_ME_TE_1($conn, self.sva.sva, self.qds.overflow, self.qds.blocked, self.qds.substituted, self.qds.topical, self.qds.valid, self.cp56time.minutes, self.cp56time.hours, self.cp56time.day, self.cp56time.dow, self.cp56time.month, self.cp56time.year, self.cp56time.su, self.cp56time.valid);
 
 on IEC60870_5_104::IE if ( asdu_id==36 ) -> event iec60870_5_104::M_ME_TF_1($conn, self.shortfloat.shortfloat, self.qds.overflow, self.qds.blocked, self.qds.substituted, self.qds.topical, self.qds.valid, self.cp56time.minutes, self.cp56time.hours, self.cp56time.day, self.cp56time.dow, self.cp56time.month, self.cp56time.year, self.cp56time.su, self.cp56time.valid);
+
+on IEC60870_5_104::IE if ( asdu_id==51 ) -> event iec60870_5_104::C_BO_NA_1($conn, self.bsi.bits);
+
+#on IEC60870_5_104::IE if ( asdu_id==64 ) -> event iec60870_5_104::C_BO_TA_1($conn, self.bsi.bits, self.cp56time.minutes, self.cp56time.hours, self.cp56time.day, self.cp56time.dow, self.cp56time.month, self.cp56time.year, self.cp56time.su, self.cp56time.valid);
 
 on IEC60870_5_104::IE if ( asdu_id==70 ) -> event iec60870_5_104::M_EI_NA_1($conn, self.coi.localpoweron, self.coi.localmanualreset, self.coi.remotereset, self.coi.unchangedparams);
 
