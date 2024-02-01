@@ -34,6 +34,21 @@ export {
 
 		bsi: vector of string &log &optional;
 
+		dco: vector of string &log &optional;
+		shortpulse: vector of bool &log &optional;
+		longpulse: vector of bool &log &optional;
+		persistent: vector of bool &log &optional;
+		execute: vector of bool &log &optional;
+		select: vector of bool &log &optional;
+
+		rco: vector of string &log &optional;
+		increment: vector of bool &log &optional;
+		decrement: vector of bool &log &optional;
+		notallowed0: vector of bool &log &optional;
+		notallowed3: vector of bool &log &optional;
+
+		sco: vector of string &log &optional;
+
 		nva: vector of int &log &optional;
 		sva: vector of int &log &optional;
 		shortfloat: vector of double &log &optional;
@@ -126,6 +141,43 @@ function set_diq(c: connection){
 	c$rec$substituted = vector();
 	c$rec$topical = vector();
 	c$rec$valid = vector();
+}
+
+# Set single command (SCO)
+function set_sco(c: connection){
+	c$rec$state_on = vector();
+	c$rec$state_off = vector();
+	c$rec$shortpulse = vector();
+	c$rec$longpulse = vector();
+	c$rec$persistent = vector();
+	c$rec$execute = vector();
+	c$rec$select = vector();
+}
+
+# Set double command (DCO)
+function set_dco(c: connection){
+	c$rec$state_on = vector();
+	c$rec$state_off = vector();
+	c$rec$indeterminate0 = vector();
+	c$rec$indeterminate3 = vector();
+	c$rec$shortpulse = vector();
+	c$rec$longpulse = vector();
+	c$rec$persistent = vector();
+	c$rec$execute = vector();
+	c$rec$select = vector();
+}
+
+# Set regulating step command (RCO)
+function set_rco(c: connection){
+	c$rec$increment = vector();
+	c$rec$decrement = vector();
+	c$rec$notallowed0 = vector();
+	c$rec$notallowed3 = vector();
+	c$rec$shortpulse = vector();
+	c$rec$longpulse = vector();
+	c$rec$persistent = vector();
+	c$rec$execute = vector();
+	c$rec$select = vector();
 }
 
 # Set Bit string of 32 bit (BSI)
@@ -609,6 +661,73 @@ event iec60870_5_104::M_ME_TF_1(c: connection, shortfloat: double, overflow: boo
 	c$rec$cp56_year += cp56_year;
 	c$rec$cp56_su += cp56_su;
 	c$rec$cp56_valid += cp56_valid;
+}
+
+# Single command
+event iec60870_5_104::C_SC_NA_1(c: connection, state_on: bool, state_off: bool, shortpulse: bool, longpulse: bool, persistent: bool, execute: bool, select: bool){
+	if ( !c?$rec ){
+		init_rec(c);
+		c$rec$ioa = vector();
+		set_sco(c);
+	} else {
+		if ( !c$rec?$ioa){
+			c$rec$ioa = vector();
+			set_sco(c);
+		}
+	}
+	c$rec$state_on += state_on;
+	c$rec$state_off += state_off;
+	c$rec$shortpulse += shortpulse;
+	c$rec$longpulse += longpulse;
+	c$rec$persistent += persistent;
+	c$rec$execute += execute;
+	c$rec$select += select;
+}
+
+# Double command
+event iec60870_5_104::C_DC_NA_1(c: connection, state_on: bool, state_off: bool, indeterminate0: bool, indeterminate3: bool, shortpulse: bool, longpulse: bool, persistent: bool, execute: bool, select: bool){
+	if ( !c?$rec ){
+		init_rec(c);
+		c$rec$ioa = vector();
+		set_dco(c);
+	} else {
+		if ( !c$rec?$ioa){
+			c$rec$ioa = vector();
+			set_dco(c);
+		}
+	}
+	c$rec$state_on += state_on;
+	c$rec$state_off += state_off;
+	c$rec$indeterminate0 += indeterminate0;
+	c$rec$indeterminate3 += indeterminate3;
+	c$rec$shortpulse += shortpulse;
+	c$rec$longpulse += longpulse;
+	c$rec$persistent += persistent;
+	c$rec$execute += execute;
+	c$rec$select += select;
+}
+
+# Regulating step command
+event iec60870_5_104::C_RC_NA_1(c: connection, increment: bool, decrement: bool, notallowed0: bool, notallowed3: bool, shortpulse: bool, longpulse: bool, persistent: bool, execute: bool, select: bool){
+	if ( !c?$rec ){
+		init_rec(c);
+		c$rec$ioa = vector();
+		set_rco(c);
+	} else {
+		if ( !c$rec?$ioa){
+			c$rec$ioa = vector();
+			set_rco(c);
+		}
+	}
+	c$rec$increment += increment;
+	c$rec$decrement += decrement;
+	c$rec$notallowed0 += notallowed0;
+	c$rec$notallowed3 += notallowed3;
+	c$rec$shortpulse += shortpulse;
+	c$rec$longpulse += longpulse;
+	c$rec$persistent += persistent;
+	c$rec$execute += execute;
+	c$rec$select += select;
 }
 
 # Binary state information (C_BO_NA_1)

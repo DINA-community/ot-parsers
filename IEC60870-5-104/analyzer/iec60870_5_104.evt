@@ -39,6 +39,12 @@ on IEC60870_5_104::IE if ( asdu_id==35 ) -> event iec60870_5_104::M_ME_TE_1($con
 
 on IEC60870_5_104::IE if ( asdu_id==36 ) -> event iec60870_5_104::M_ME_TF_1($conn, self.shortfloat.shortfloat, self.qds.overflow, self.qds.blocked, self.qds.substituted, self.qds.topical, self.qds.valid, self.cp56time.minutes, self.cp56time.hours, self.cp56time.day, self.cp56time.dow, self.cp56time.month, self.cp56time.year, self.cp56time.su, self.cp56time.valid);
 
+on IEC60870_5_104::IE if ( asdu_id==45 ) -> event iec60870_5_104::C_SC_NA_1($conn, self.sco.state_on, self.sco.state_off, self.sco.shortpulse, self.sco.longpulse, self.sco.persistent, self.sco.execute, self.sco.select);
+
+on IEC60870_5_104::IE if ( asdu_id==46 ) -> event iec60870_5_104::C_DC_NA_1($conn, self.dco.state_on, self.dco.state_off, self.dco.indeterminate0, self.dco.indeterminate3, self.dco.shortpulse, self.dco.longpulse, self.dco.persistent, self.dco.execute, self.dco.select);
+
+on IEC60870_5_104::IE if ( asdu_id==47 ) -> event iec60870_5_104::C_RC_NA_1($conn, self.rco.increment, self.rco.decrement, self.rco.notallowed0, self.rco.notallowed3, self.rco.shortpulse, self.rco.longpulse, self.rco.persistent, self.rco.execute, self.rco.select);
+
 on IEC60870_5_104::IE if ( asdu_id==51 ) -> event iec60870_5_104::C_BO_NA_1($conn, self.bsi.bits);
 
 #on IEC60870_5_104::IE if ( asdu_id==64 ) -> event iec60870_5_104::C_BO_TA_1($conn, self.bsi.bits, self.cp56time.minutes, self.cp56time.hours, self.cp56time.day, self.cp56time.dow, self.cp56time.month, self.cp56time.year, self.cp56time.su, self.cp56time.valid);

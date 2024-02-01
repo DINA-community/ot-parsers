@@ -6,3 +6,6 @@ testing/
 .gitlab-ci.yml
 
 *.pcap
+*.pcapng
+
+IEC61850/GOOSE/signatures/
