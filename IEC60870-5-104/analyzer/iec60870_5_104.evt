@@ -45,6 +45,8 @@ on IEC60870_5_104::IE if ( asdu_id==46 ) -> event iec60870_5_104::C_DC_NA_1($con
 
 on IEC60870_5_104::IE if ( asdu_id==47 ) -> event iec60870_5_104::C_RC_NA_1($conn, self.rco.increment, self.rco.decrement, self.rco.notallowed0, self.rco.notallowed3, self.rco.shortpulse, self.rco.longpulse, self.rco.persistent, self.rco.execute, self.rco.select);
 
+on IEC60870_5_104::IE if ( asdu_id==49 ) -> event iec60870_5_104::C_SE_NB_1($conn, self.sva.sva, self.qos.execute, self.qos.select);
+
 on IEC60870_5_104::IE if ( asdu_id==51 ) -> event iec60870_5_104::C_BO_NA_1($conn, self.bsi.bits);
 
 #on IEC60870_5_104::IE if ( asdu_id==64 ) -> event iec60870_5_104::C_BO_TA_1($conn, self.bsi.bits, self.cp56time.minutes, self.cp56time.hours, self.cp56time.day, self.cp56time.dow, self.cp56time.month, self.cp56time.year, self.cp56time.su, self.cp56time.valid);

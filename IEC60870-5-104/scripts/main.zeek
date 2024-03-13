@@ -180,6 +180,12 @@ function set_rco(c: connection){
 	c$rec$select = vector();
 }
 
+# Set Qualifier of set-point command (QOS)
+function set_qos(c: connection){
+	c$rec$execute = vector();
+	c$rec$select = vector();
+}
+
 # Set Bit string of 32 bit (BSI)
 function set_bsi(c: connection){
 	c$rec$bsi = vector();
@@ -726,6 +732,26 @@ event iec60870_5_104::C_RC_NA_1(c: connection, increment: bool, decrement: bool,
 	c$rec$shortpulse += shortpulse;
 	c$rec$longpulse += longpulse;
 	c$rec$persistent += persistent;
+	c$rec$execute += execute;
+	c$rec$select += select;
+}
+
+# Setpoint command, scaled value
+event iec60870_5_104::C_SE_NB_1(c: connection, sva: int, execute: bool, select: bool){
+	if ( !c?$rec ){
+		init_rec(c);
+		c$rec$ioa = vector();
+		set_sva(c);
+		set_qos(c);
+	} else {
+		if ( !c$rec?$ioa){
+			c$rec$ioa = vector();
+			set_sva(c);
+			set_qos(c);
+		}
+	}
+	
+	c$rec$sva += sva;
 	c$rec$execute += execute;
 	c$rec$select += select;
 }
