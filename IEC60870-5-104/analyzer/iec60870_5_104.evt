@@ -56,3 +56,8 @@ on IEC60870_5_104::IE if ( asdu_id==70 ) -> event iec60870_5_104::M_EI_NA_1($con
 on IEC60870_5_104::IE if ( asdu_id==100 ) -> event iec60870_5_104::C_IC_NA_1($conn, self.qoi.stationinterrogation, self.qoi.qoi);
 
 on IEC60870_5_104::IE if ( asdu_id==101 ) -> event iec60870_5_104::C_CI_NA_1($conn, self.qcc.nocounter, self.qcc.group1counter, self.qcc.group2counter, self.qcc.group3counter, self.qcc.group4counter, self.qcc.generalcounter, self.qcc.readonly, self.qcc.freeze, self.qcc.reset, self.qcc.freezeandreset);
+
+on IEC60870_5_104::IE if ( asdu_id==102 ) -> event iec60870_5_104::C_RD_NA_1($conn, self.read_cmd);
+
+#on IEC60870_5_104::IE if ( asdu_id==105 ) -> event iec60870_5_104::C_RP_NA_1($conn, self.qrp.qrp);
+on IEC60870_5_104::IE if ( asdu_id==105 ) -> event iec60870_5_104::C_RP_NA_1($conn, self.read_cmd_2, self.qrp.qrp);

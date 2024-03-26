@@ -81,6 +81,10 @@ export {
 		cp56_year: vector of int &log &optional;
 		cp56_su: vector of bool &log &optional;
 		cp56_valid: vector of bool &log &optional;
+
+		read_cmd: vector of bool &log &optional;
+
+		qrp: vector of string &log &optional;
     };
 
 }
@@ -249,6 +253,16 @@ function set_sva(c: connection){
 function set_vit(c: connection){
 	c$rec$vti_value = vector();
 	c$rec$vti_transient = vector();
+}
+
+# Set value of read_cmd for C_RD_NA_1
+function set_read_cmd(c: connection){
+	c$rec$read_cmd = vector();
+}
+
+# Set Qualifier of reset process (QRP)
+function set_qrp(c: connection){
+	c$rec$qrp = vector();
 }
 
 # APDU event
@@ -827,4 +841,38 @@ event iec60870_5_104::C_CI_NA_1(c: connection, nocounter: bool, group1counter: b
 	c$rec$freeze += freeze;
 	c$rec$reset += reset;
 	c$rec$freezeandreset += freezeandreset;
+}
+
+# Read command
+event iec60870_5_104::C_RD_NA_1(c: connection, read_cmd: bool){
+	if ( !c?$rec ){
+		init_rec(c);
+		c$rec$ioa = vector();
+		set_read_cmd(c);
+	} else {
+		if ( !c$rec?$ioa){
+			c$rec$ioa = vector();
+			set_read_cmd(c);
+		}
+	}
+	c$rec$read_cmd += read_cmd;
+}
+
+# Reset process command
+# event iec60870_5_104::C_RP_NA_1(c: connection, qrp: string){
+event iec60870_5_104::C_RP_NA_1(c: connection, read_cmd: bool, qrp: string){
+	if ( !c?$rec ){
+		init_rec(c);
+		c$rec$ioa = vector();
+		set_qrp(c);
+		set_read_cmd(c);
+	} else {
+		if ( !c$rec?$ioa){
+			c$rec$ioa = vector();
+			set_qrp(c);
+			set_read_cmd(c);
+		}
+	}
+	c$rec$qrp += qrp;
+	c$rec$read_cmd += read_cmd;
 }
