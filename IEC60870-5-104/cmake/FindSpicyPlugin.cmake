@@ -71,30 +71,29 @@ if (SPICYZ)
     zeek_print_summary()
     spicy_print_summary()
 
+    #Fetch none tested zeek versions resulting in build errors
+    if (ZEEK-SPICY_PLUGIN_VERSION VERSION_GREATER "6.0.3")
+        message(NOTICE "!- Zeek versions greater than 6.0.3 are not tested and might fail")
+    endif ()
+
+    #Fetch none tested spicy versions resulting in build errors
+    if (SPICY_PLUGIN_VERSION VERSION_GREATER "1.8.1")
+        message(NOTICE "!- Spicy versions greater than 1.8.1 might fail to compile the parser successfully")
+
+    #stop iminent reported crash related to specific versions
+        if (SPICY_PLUGIN_VERSION VERSION_EQUAL "1.9.0")
+            message (NOTICE "!- Spicy version 1.9.0 is reported to fail to compile the parser. Please use a different version (E.g. 1.8.1)")
+            message (FATAL_ERROR "Spotted incompatible Spicy version - aborting")
+        endif ()
+
+        if (SPICY_PLUGIN_VERSION VERSION_EQUAL "1.10.0")
+            message (NOTICE "!- Spicy version 1.10.0 is reported to fail to compile the parser. Please use a different version (E.g. 1.8.1)")
+            message (FATAL_ERROR "Spotted incompatible Spicy version - aborting")
+        endif ()
+    endif ()
+
     include(ZeekSpicyAnalyzerSupport)
 endif ()
-
-#Fetch none tested zeek versions resulting in build errors
-if (ZEEK_VERISON VERSION_GREATER "6.0.3")
-    message(NOTICE "Zeek versions greater than 6.0.3 are not tested and might fail to compile the parser successfully")
-
-    #stop iminent reported crash related to specific versions
-    if (ZEEK_VERISON VERSION_EQUAL "6.1.1")
-    message (NOTICE "Zeek version 6.1.1 is reported to fail to compile the parser. Please use a different version (E.g. 6.0.3)."
-    message (FATAL_ERROR "Spotted incompatible Zeek version - aborting")
-    endif
-endif
-
-#Fetch none tested spicy versions resulting in build errors
-if (SPICY_PLUGIN_VERSION VERSION_GREATER "1.8.1")
-    message(NOTICE "Spicy versions greater than 1.8.1 might fail to compile the parser successfully")
-
-    #stop iminent reported crash related to specific versions
-    if (SPICY_PLUGIN_VERSION VERSION_EQUAL "1.9.0")
-        message (NOTICE "Spicy version 1.9.0 is reported to fail to compile the parser. Please use a different version (E.g. 1.8.1)"
-        message (FATAL_ERROR "Spotted incompatible Spicy version - aborting")
-    endif
-endif
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(SpicyPlugin DEFAULT_MSG SPICYZ ZEEK_FOUND)
