@@ -1064,7 +1064,7 @@ type FRQ = unit{
 type LOS = unit{
 
 	# Declarations
-	var size: uint8;
+	# var size: uint8; #1 - temp fix (?)
 
 	# Get length of segment (LOS)
 	: bitfield(8) {
@@ -1106,7 +1106,7 @@ type LSQ = unit{
 type NOF = unit{
 
 	# Declarations
-	var name: int16;
+	# var name: int16; #1 - temp fix (?)
 
 	# Get name of file (NOF)
 	: bitfield(16) {
@@ -1119,7 +1119,7 @@ type NOF = unit{
 type NOS = unit{
 
 	# Declarations
-	var name: int8;
+	# var name: int8; #1 - temp fix (?)
 
 	# Get name of section (NOS)
 	: bitfield(8) {

@@ -72,24 +72,13 @@ if (SPICYZ)
     spicy_print_summary()
 
     #Fetch none tested zeek versions resulting in build errors
-    if (ZEEK-SPICY_PLUGIN_VERSION VERSION_GREATER "6.0.3")
-        message(NOTICE "!- Zeek versions greater than 6.0.3 are not tested and might fail")
+    if (ZEEK_VERSION VERSION_GREATER "6.2.0")
+        message(NOTICE "!- Zeek versions greater than 6.2.0 are not tested and might fail")
     endif ()
 
     #Fetch none tested spicy versions resulting in build errors
-    if (SPICY_PLUGIN_VERSION VERSION_GREATER "1.8.1")
-        message(NOTICE "!- Spicy versions greater than 1.8.1 might fail to compile the parser successfully")
-
-    #stop iminent reported crash related to specific versions
-        if (SPICY_PLUGIN_VERSION VERSION_EQUAL "1.9.0")
-            message (NOTICE "!- Spicy version 1.9.0 is reported to fail to compile the parser. Please use a different version (E.g. 1.8.1)")
-            message (FATAL_ERROR "Spotted incompatible Spicy version - aborting")
-        endif ()
-
-        if (SPICY_PLUGIN_VERSION VERSION_EQUAL "1.10.0")
-            message (NOTICE "!- Spicy version 1.10.0 is reported to fail to compile the parser. Please use a different version (E.g. 1.8.1)")
-            message (FATAL_ERROR "Spotted incompatible Spicy version - aborting")
-        endif ()
+    if (SPICY_VERSION VERSION_GREATER "1.10.0")
+        message(NOTICE "!- Spicy versions greater than 1.10.0 are not tested and might fail")
     endif ()
 
     include(ZeekSpicyAnalyzerSupport)
