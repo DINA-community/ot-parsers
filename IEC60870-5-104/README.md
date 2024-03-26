@@ -6,7 +6,7 @@ IEC 60870-5-104 Parser - Network access for IEC 60870-5-101 using standard trans
 
 IEC60870_5_104 is a Zeek plugin (written in [Spicy](https://docs.zeek.org/projects/spicy/en/latest/)) for parsing and logging fields used by the IEC 60870-5-104 protocol as presented in the standard IEC 60870-5-104:2006 and IEC 60870-5-101:2003, defining a transmission format for sending and receiving SCADA data in power systems.
 
-This parser produces the following log files, defined in [scripzs/main.zeek](scripts/main.zeek):
+This parser produces the following log files, defined in [scripts/main.zeek](scripts/main.zeek):
 
 * `104.log`
 
