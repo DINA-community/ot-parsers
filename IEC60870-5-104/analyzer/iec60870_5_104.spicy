@@ -230,7 +230,7 @@ type IE = unit (asdu_id: uint8) {
 
 		}
 
-		# Get bitstring of 32 bit (M_BO_NA_1) --> not tested!
+		# Get bitstring of 32 bit (M_BO_NA_1)
 		asdu_type::M_BO_NA_1 -> {
 
 			# Bit string (BSI)
@@ -337,7 +337,7 @@ type IE = unit (asdu_id: uint8) {
 
 		}
 
-		# Get bitstring of 32 bits with time tag CP56Time2a (M_BO_TB_1) --> not tested!
+		# Get bitstring of 32 bits with time tag CP56Time2a (M_BO_TB_1)
 		asdu_type::M_BO_TB_1 -> {
 
 			# Bit string (BSI)
@@ -452,7 +452,7 @@ type IE = unit (asdu_id: uint8) {
 
 		}
 
-		# Get single command (C_SC_NA_1) --> not tested!
+		# Get single command (C_SC_NA_1)
 		asdu_type::C_SC_NA_1 -> {
 
 			# Single command object (SCO)
@@ -460,7 +460,7 @@ type IE = unit (asdu_id: uint8) {
 
 		}
 
-		# Get double command (C_DC_NA_1) --> not tested!
+		# Get double command (C_DC_NA_1)
 		asdu_type::C_DC_NA_1 -> {
 
 			# Double command object (SCO)
@@ -468,7 +468,7 @@ type IE = unit (asdu_id: uint8) {
 
 		}
 
-		# Get regulating step command (C_RC_NA_1) --> not tested!
+		# Get regulating step command (C_RC_NA_1)
 		asdu_type::C_RC_NA_1 -> {
 
 			# Regulating step command (RCO)
@@ -509,7 +509,7 @@ type IE = unit (asdu_id: uint8) {
 
 		}
 
-		# Get Bitstring of 32 bit (C_BO_NA_1) --> not tested!
+		# Get Bitstring of 32 bit (C_BO_NA_1)
 		asdu_type::C_BO_NA_1 -> {
 
 			# Bit string (BSI)
@@ -592,7 +592,7 @@ type IE = unit (asdu_id: uint8) {
 
 		}
 
-		# Get bitstring of 32 bits with CP56Time2a time tag (C_BO_TA_1) --> not tested!
+		# Get bitstring of 32 bits with CP56Time2a time tag (C_BO_TA_1)
 		asdu_type::C_BO_TA_1 -> {
 
 			# Bit string (BSI)
