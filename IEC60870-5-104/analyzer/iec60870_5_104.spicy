@@ -649,7 +649,6 @@ type IE = unit (asdu_id: uint8) {
 		}
 
 		# Get reset process command (C_RP_NA_1) --> not tested!
-		# Is that C_RP_NA_1 or C_RP_NC_1?
 		asdu_type::C_RP_NA_1 -> {
 
 			var read_cmd_2: bool = True;

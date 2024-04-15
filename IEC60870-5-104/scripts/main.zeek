@@ -859,7 +859,6 @@ event iec60870_5_104::C_RD_NA_1(c: connection, read_cmd: bool){
 }
 
 # Reset process command
-# event iec60870_5_104::C_RP_NA_1(c: connection, qrp: string){
 event iec60870_5_104::C_RP_NA_1(c: connection, read_cmd: bool, qrp: string){
 	if ( !c?$rec ){
 		init_rec(c);
