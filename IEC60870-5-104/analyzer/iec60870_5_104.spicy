@@ -651,6 +651,8 @@ type IE = unit (asdu_id: uint8) {
 		# Get reset process command (C_RP_NA_1) --> not tested!
 		asdu_type::C_RP_NA_1 -> {
 
+			var read_cmd_2: bool = True;
+
 			# Qualifier of reset process command
 			qrp: QRP;
 
