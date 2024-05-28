@@ -26,67 +26,102 @@ If this package is installed from `zkg` it will be added to the available plugin
 
 If you have `zkg` configured to load packages (see `@load packages` in the [`zkg` Quickstart Guide](https://docs.zeek.org/projects/package-manager/en/stable/quickstart.html)), this plugin and scripts will automatically be loaded and ready to go.
 
+### Test
+
+The script can tested immideatly with
+
+```bash
+$ zeek -r <pcapfile> iec60870_5_104.hlto ./scripts/main.zeek 
+Initializing IEC 60870-5-104 analyzer
+```
+
+Now, in the folder lies an `conn.log`and the application log `iec_104.log`.
+
+## Finalize installation
+
+In order to including the parser into zeeks scripting land the folder has to copy into zeek. In the follwing example the installation path to zeek is`/opt/`
+
+```bash
+cd /opt/zeek/share/zeek/base/protocols
+sudo mkdir iec60870-5-104/
+cp <path_to_folder IEC60870-5-104>/scripts/* opt/zeek/share/zeek/base/protocols/iec60870-5-104/
+cd /opt/zeek/share/zeek/base/
+<texteditor> init-default.zeek
+```
+
+```bash
+# <insert a command if you want here>
+@load base/protocols/iec60870-5-104
+```
+
+Idealy, the line is inserted where the other base protocols are listed. An command can be included by using the # sign.
+
 ## Protocol support and limitations
 
 This parser has implemented and tested the following message types according to the IEC 60870-5-104 standard (see IEC 60870-5-104: 6 Auswahl von ASDU aus IEC 60870-5-101 und zusätzliche ASDU):
 
 | ASDU type (ASDU ID)    | Implemented    | Tested         |
 | ---------------------- |----------------|----------------|
-| M_SP_NA_1 (1)          | Yes            | Yes            |
-| M_DP_NA_1 (3)          | Yes            | Yes            |
-| M_ST_NA_1 (5)          | Yes            | Yes            |
-| M_BO_NA_1 (7)          | Yes            | Limited        |
-| M_ME_NA_1 (9)          | Yes            | Yes            |
-| M_ME_NB_1 (11)         | Yes            | Yes            |
-| M_ME_NC_1 (13)         | Yes            | Yes            |
-| M_IT_NA_1 (15)         | Yes            | No             |
-| M_PS_NA_1 (20)         | Yes            | No             |
-| M_ME_ND_1 (21)         | Yes            | No             |
-| M_SP_TB_1 (30)         | Yes            | Yes            |
-| M_DP_TB_1 (31)         | Yes            | Yes            |
-| M_ST_TB_1 (32)         | Yes            | Yes            |
-| M_BO_TB_1 (33)         | Yes            | Limited        |
-| M_ME_TD_1 (34)         | Yes            | Yes            |
-| M_ME_TE_1 (35)         | Yes            | Yes            |
-| M_ME_TF_1 (36)         | Yes            | Yes            |
-| M_IT_TB_1 (37)         | Yes            | No             |
-| M_EP_TD_1 (38)         | Yes            | No             |
-| M_EP_TE_1 (39)         | Yes            | No             |
-| M_EP_TF_1 (40)         | Yes            | No             |
-| C_SC_NA_1 (45)         | Yes            | Limited        |
-| C_DC_NA_1 (46)         | Yes            | Limited        |
-| C_RC_NA_1 (47)         | Yes            | Limited        |
-| C_SE_NA_1 (48)         | Yes            | No             |
-| C_SE_NB_1 (49)         | Yes            | No             |
-| C_SE_NC_1 (50)         | Yes            | No             |
-| C_BO_NA_1 (51)         | Yes            | Limited        |
-| C_SC_TA_1 (58)         | Yes            | No             |
-| C_DC_TA_1 (59)         | Yes            | No             |
-| C_RC_TA_1 (60)         | Yes            | No             |
-| C_SE_TA_1 (61)         | Yes            | No             |
-| C_SE_TB_1 (62)         | Yes            | No             |
-| C_SE_TC_1 (63)         | Yes            | No             |
-| C_BO_TA_1 (64)         | Yes            | Limited        |
-| M_EI_NA_1 (70)         | Yes            | Yes            |
-| C_IC_NA_1 (100)        | Yes            | Yes            |
-| C_CI_NA_1 (101)        | Yes            | Yes            |
-| C_RD_NA_1 (102)        | Yes            | No             |
-| C_CS_NA_1 (103)        | Yes            | No             |
-| C_TS_NA_1 (104)        | Yes            | No             |
-| C_RP_NA_1 (105)        | Yes            | No             |
-| C_CD_NA_1 (106)        | Yes            | No             |
-| C_TS_TA_1 (107)        | Yes            | No             |
-| P_ME_NA_1 (110)        | Yes            | No             |
-| P_ME_NB_1 (111)        | Yes            | No             |
-| P_ME_NC_1 (112)        | Yes            | No             |
-| P_AC_NA_1 (113)        | Yes            | No             |
-| F_FR_NA_1 (120)        | Yes            | No             |
-| F_SR_NA_1 (121)        | Yes            | No             |
-| F_SC_NA_1 (122)        | Yes            | No             |
-| F_LS_NA_1 (123)        | Yes            | No             |
-| F_AF_NA_1 (124)        | Yes            | No             |
-| F_SG_NA_1 (125)        | Yes            | No             |
-| F_DR_TA_1 (126)        | Yes            | No             |
+| M_SP_NA_1 (1)          | Fully          | Yes            |
+| M_DP_NA_1 (3)          | Fully          | Yes            |
+| M_ST_NA_1 (5)          | Fully          | Yes            |
+| M_BO_NA_1 (7)          | Fully          | Limited        |
+| M_ME_NA_1 (9)          | Fully          | Yes            |
+| M_ME_NB_1 (11)         | Fully          | Yes            |
+| M_ME_NC_1 (13)         | Fully          | Yes            |
+| M_IT_NA_1 (15)         | Partially      | No             |
+| M_PS_NA_1 (20)         | Partially      | No             |
+| M_ME_ND_1 (21)         | Partially      | No             |
+| M_SP_TB_1 (30)         | Fully          | Yes            |
+| M_DP_TB_1 (31)         | Fully          | Yes            |
+| M_ST_TB_1 (32)         | Fully          | Yes            |
+| M_BO_TB_1 (33)         | Fully          | Limited        |
+| M_ME_TD_1 (34)         | Fully          | Yes            |
+| M_ME_TE_1 (35)         | Fully          | Yes            |
+| M_ME_TF_1 (36)         | Fully          | Yes            |
+| M_IT_TB_1 (37)         | Partially      | No             |
+| M_EP_TD_1 (38)         | Partially      | No             |
+| M_EP_TE_1 (39)         | Partially      | No             |
+| M_EP_TF_1 (40)         | Partially      | No             |
+| C_SC_NA_1 (45)         | Fully          | Limited        |
+| C_DC_NA_1 (46)         | Fully          | Limited        |
+| C_RC_NA_1 (47)         | Fully          | Limited        |
+| C_SE_NA_1 (48)         | Partially      | No             |
+| C_SE_NB_1 (49)         | Fully          | Limited        |
+| C_SE_NC_1 (50)         | Partially      | No             |
+| C_BO_NA_1 (51)         | Fully          | Limited        |
+| C_SC_TA_1 (58)         | Partially      | No             |
+| C_DC_TA_1 (59)         | Partially      | No             |
+| C_RC_TA_1 (60)         | Partially      | No             |
+| C_SE_TA_1 (61)         | Partially      | No             |
+| C_SE_TB_1 (62)         | Partially      | No             |
+| C_SE_TC_1 (63)         | Partially      | No             |
+| C_BO_TA_1 (64)         | Fully          | Limited        |
+| M_EI_NA_1 (70)         | Fully          | Yes            |
+| C_IC_NA_1 (100)        | Fully          | Yes            |
+| C_CI_NA_1 (101)        | Fully          | Yes            |
+| C_RD_NA_1 (102)        | Fully          | Limited        |
+| C_CS_NA_1 (103)        | Partially      | No             |
+| C_TS_NA_1 (104)        | Partially      | No             |
+| C_RP_NA_1 (105)        | Fully          | Limited*       |
+| C_CD_NA_1 (106)        | Partially      | No             |
+| C_TS_TA_1 (107)        | Partially      | No             |
+| P_ME_NA_1 (110)        | Partially      | No             |
+| P_ME_NB_1 (111)        | Partially      | No             |
+| P_ME_NC_1 (112)        | Partially      | No             |
+| P_AC_NA_1 (113)        | Partially      | No             |
+| F_FR_NA_1 (120)        | Partially      | No             |
+| F_SR_NA_1 (121)        | Partially      | No             |
+| F_SC_NA_1 (122)        | Partially      | No             |
+| F_LS_NA_1 (123)        | Partially      | No             |
+| F_AF_NA_1 (124)        | Partially      | No             |
+| F_SG_NA_1 (125)        | Partially      | No             |
+| F_DR_TA_1 (126)        | Partially      | No             |
+
+Legend for column *Implemented*:\
+
+* Fully  &emsp; &nbsp; events are triggered
+* Partially &nbsp;events not given
 
 Legend for column *Test*:\
 The parser was tested
@@ -169,6 +204,7 @@ This log summarizes, by connection, IEC 60870-5-104 frames transmitted over 2404
 | cp56_year              | vector\<int>    | CP56 time object: year 0-9999                        |
 | cp56_su                | vector\<bool>   | CP56 time object: summer time                        |
 | cp56_valid             | vector\<bool>   | CP56 time object: validity                           |
+| qrp                    | vector\<string> | Qualifier of reset process                           |
 
 #### Community ID
 
