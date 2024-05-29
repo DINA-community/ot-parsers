@@ -33,4 +33,4 @@ Remember that your live plant and network traffic might differ from our tested c
 
 The software was developed on behalf of the [BSI](https://www.bsi.bund.de) \(Federal Office for Information Security\)
 
-Copyright (c) 2024 by DINA-Community BSD 3-Clause License. [See License](/LICENSE)
+Copyright ©  2023-2024 by DINA-Community BSD 3-Clause License. [See License](/LICENSE)
