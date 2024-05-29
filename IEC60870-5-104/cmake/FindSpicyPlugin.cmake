@@ -71,6 +71,16 @@ if (SPICYZ)
     zeek_print_summary()
     spicy_print_summary()
 
+    #Fetch none tested zeek versions resulting in build errors
+    if (ZEEK_VERSION VERSION_GREATER "6.2.0")
+        message(NOTICE "!- Zeek versions greater than 6.2.0 are not tested and might fail")
+    endif ()
+
+    #Fetch none tested spicy versions resulting in build errors
+    if (SPICY_VERSION VERSION_GREATER "1.10.0")
+        message(NOTICE "!- Spicy versions greater than 1.10.0 are not tested and might fail")
+    endif ()
+
     include(ZeekSpicyAnalyzerSupport)
 endif ()
 
