@@ -14,51 +14,78 @@ For additional information on this log file, see the *Logging Capabilities* sect
 
 ## Installation
 
-This script is available as a package for [Zeek Package Manager](https://docs.zeek.org/projects/package-manager/en/stable/index.html). It requires [Spicy](https://docs.zeek.org/projects/spicy/en/latest/) and the [Zeek Spicy plugin](https://docs.zeek.org/projects/spicy/en/latest/zeek.html).
+> This script is available as a package for [Zeek Package Manager](https://docs.zeek.org/projects/package-manager/en/stable/index.html). It requires [Spicy](https://docs.zeek.org/projects/spicy/en/latest/) and the [Zeek Spicy plugin](https://docs.zeek.org/projects/spicy/en/latest/zeek.html).
+
+[//]: # ()
+> This section assumes you have installed zeek and spicy as instructed in the [Zeek documentation](https://docs.zeek.org/en/master/install.html).
+
+To be able to use the parser, the analyzer part has to be compiled using the local `Spicy` version. The following code will compile the `.spicy` and `.evt` file into binary code that Zeek can load using its Spicy plugin, as well as deploy the analyzer.
+
+> Depending on how `Zeek` was installed, you might need root/sudo privileges 
 
 ```bash
 cd IEC60870-5-104
-cmake . && make install
-zeek -NN | grep IEC60870_5_104
+cmake .  
+make install
 ```
 
 If this package is installed from `zkg` it will be added to the available plugins. This can be tested by running `zeek -NN`. If installed correctly you will see `ANALYZER_SPICY_IEC608070_5_104` under the list of `Zeek::Spicy` analyzers.
 
-If you have `zkg` configured to load packages (see `@load packages` in the [`zkg` Quickstart Guide](https://docs.zeek.org/projects/package-manager/en/stable/quickstart.html)), this plugin and scripts will automatically be loaded and ready to go.
+To instruct a configured `zkg` to load packages (see `@load packages` in the [zkg Quickstart Guide](https://docs.zeek.org/projects/package-manager/en/stable/quickstart.html)), this plugin and scripts will automatically be loaded and ready to go.
+
+If you are **not** using `zkg`, you will need to deploy the `main.zeek` file into the zeek protocol landscape, for Zeek to be able to write the corresponding logs by default. See the [Zeek Integration] steps(#zeek-integration) down below for further instructions.
 
 ### Test
 
-The script can tested immideatly with
+The script can be tested manually, passing the fresh compiled `.hlto` analyzer and the given `main.zeek` of the protocol.
+In the following example we read (**-r**) a pcap file to analyze.
 
 ```bash
-$ zeek -r <pcapfile> iec60870_5_104.hlto ./scripts/main.zeek 
+$ zeek -r <PCAP_file> iec60870_5_104.hlto ./scripts/main.zeek 
 Initializing IEC 60870-5-104 analyzer
+[...]
 ```
 
-Now, in the folder lies an `conn.log`and the application log `iec_104.log`.
+If run successfully, the iec_104.log will be created alongside other zeek logs.
 
-## Finalize installation
+### Zeek Integration
 
-In order to including the parser into zeeks scripting land the folder has to copy into zeek. In the follwing example the installation path to zeek is`/opt/`
+> This step will be mitigated by a script helper in future versions.
+
+In order for zeek to write the parser logs by default, it is necessary to include the given `main.zeek` file into the zeek protocol landscape and edit the corresponding `init-default.zeek` configuration file.
+
+>In the following example zeek was installed (using the binary packages) into `/opt/zeek/`.\
+> You can check the location running the `which` command.
+>
+> ```bash
+>$ which zeek
+> /opt/zeek/bin
+>```
+
+First we create a new folder for the protocol where we will place the the contents of the scripts folder.
 
 ```bash
-cd /opt/zeek/share/zeek/base/protocols
-sudo mkdir iec60870-5-104/
-cp <path_to_folder IEC60870-5-104>/scripts/* opt/zeek/share/zeek/base/protocols/iec60870-5-104/
-cd /opt/zeek/share/zeek/base/
-<texteditor> init-default.zeek
+mkdir /opt/zeek/share/zeek/base/protocols/iec60870-5-104
 ```
+
+In this new folder we place the files contained in the scripts folder of the parser.
 
 ```bash
-# <insert a command if you want here>
-@load base/protocols/iec60870-5-104
+cp scripts/* opt/zeek/share/zeek/base/protocols/iec60870-5-104/
 ```
 
-Idealy, the line is inserted where the other base protocols are listed. An command can be included by using the # sign.
+In order to have Zeek load the parser as a default, we edit `init-default.zeek` and append a corresponding `@load`instruction, pointing towards our newly created folder containing the copied scripts.
+
+```bash
+echo "@load base/protocols/iec60870-5-104" >> /opt/zeek/share/zeek/base/init-default.zeek
+```
+
+Now Zeek will load the parser as a part of the default parser set. If you want to disable this behavior, place a **#** in front of the corresponding `@load` line.
 
 ## Protocol support and limitations
 
-This parser has implemented and tested the following message types according to the IEC 60870-5-104 standard (see IEC 60870-5-104: 6 Auswahl von ASDU aus IEC 60870-5-101 und zusätzliche ASDU):
+This parser was implemented and tested for the following message types according to the [IEC 60870-5-104](https://webstore.iec.ch/preview/info_iec60870-5-104%7Bed2.0%7Den_d.pdf) standard:
+
 
 | ASDU type (ASDU ID)    | Implemented    | Tested         |
 | ---------------------- |----------------|----------------|
@@ -118,16 +145,16 @@ This parser has implemented and tested the following message types according to 
 | F_SG_NA_1 (125)        | Partially      | No             |
 | F_DR_TA_1 (126)        | Partially      | No             |
 
-Legend for column *Implemented*:\
+**Legend for column *Implemented*:**
 
 * Fully  &emsp; &nbsp; events are triggered
 * Partially &nbsp;events not given
 
-Legend for column *Test*:\
+**Legend for column *Test*:**\
 The parser was tested
 
-* Limited  &nbsp;  with fabricated/edited network traffic
 * Yes &emsp;&emsp; with authenticate network traffic
+* Limited  &nbsp;  with fabricated/edited network traffic
 * No  &nbsp; &emsp;&emsp; with None (no events implemented)
 
 ## Logging Capabilities
@@ -216,8 +243,4 @@ The software was developed on behalf of the [BSI](https://www.bsi.bund.de) \(Fed
 
 ## Licenses
 
-Copyright (c) 2023 by DINA-Community. [See License](/LICENSE)
-
-### Third party licenses
-
-This projects uses code from [spicy-ldap](https://github.com/zeek/spicy-ldap/blob/main/analyzer/asn1.spicy) under the license provided in [asn1.spicy](/asn1.spicy) for all provided parsers.
+Copyright © 2023-2024 by DINA-Community. [See License](/LICENSE)
