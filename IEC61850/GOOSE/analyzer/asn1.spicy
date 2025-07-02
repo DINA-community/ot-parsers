@@ -1,37 +1,5 @@
 # Copyright (c) 2021 by the Zeek Project. See LICENSE for details.
 
-###############################################################################
-# Copyright (c) 2020-2021 by the Zeek Project through the International Computer
-# Science Institute. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# (1) Redistributions of source code must retain the above copyright
-#     notice, this list of conditions and the following disclaimer.
-#
-# (2) Redistributions in binary form must reproduce the above copyright
-#     notice, this list of conditions and the following disclaimer in the
-#     documentation and/or other materials provided with the distribution.
-#
-# (3) Neither the name of the Zeek Project, the International Computer
-#     Science Institute, nor the names of contributors may be used to
-#     endorse or promote products derived from this software without
-#     specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-###############################################################################
-
 module ASN1;
 
 ###############################################################################
@@ -120,6 +88,16 @@ type LengthType = unit {
 };
 
 type ASN1Tag = unit {
+@if SPICY_VERSION >= 10900
+ : bitfield(8) {
+    type_: 0..4 &convert=ASN1Type($$);
+    constructed: 5 &convert=cast<bool>($$);
+    class: 6..7 &convert=ASN1Class($$);
+  };
+
+@else
+  # Version before spicy-1.9 do not support lifting
+  # anonymous bitfields into parent unit.
   var type_: ASN1Type;
   var class: ASN1Class;
   var constructed: bool;
@@ -133,6 +111,7 @@ type ASN1Tag = unit {
     self.class = ASN1Class($$.class);
     self.constructed = cast<bool>($$.constructed);
   }
+@endif
 };
 
 #- ASN.1 bit string -----------------------------------------------------------
@@ -161,7 +140,7 @@ type ASN1OctetString = unit(len: uint64, constructed: bool) {
 # https://www.obj-sys.com/asn1tutorial/node124.html
 
 type ASN1String = unit(tag: ASN1Tag, len: uint64) {
-  var encoding: hilti::Charset;
+  var encoding: spicy::Charset;
 
   on %init {
     switch ( tag.type_ ) {
@@ -172,7 +151,7 @@ type ASN1String = unit(tag: ASN1Tag, len: uint64) {
       case ASN1Type::PrintableString,
            ASN1Type::GeneralizedTime,
            ASN1Type::UTCTime: {
-        self.encoding = hilti::Charset::ASCII;
+        self.encoding = spicy::Charset::ASCII;
       }
 
       case ASN1Type::UTF8String,
@@ -188,7 +167,7 @@ type ASN1String = unit(tag: ASN1Tag, len: uint64) {
            # BMPString and UniversalString. This *may* not be correct.
            ASN1Type::BMPString,
            ASN1Type::UniversalString: {
-        self.encoding = hilti::Charset::UTF8;
+        self.encoding = spicy::Charset::UTF8;
       }
     }
   }
@@ -207,27 +186,28 @@ type ASN1ObjectIdentifierNibble = unit {
 } &convert=self.data;
 
 type ASN1ObjectIdentifier = unit(len: uint64) {
-  var oid: vector<uint64>;
+  var oidbytes: bytes;
   var temp: uint64;
   var oidstring: string;
 
   : uint8 if ( len >= 1 ) {
     self.temp = $$ / 40;
-    self.oid.push_back( self.temp );
-    self.oidstring = "%d" % (self.temp);
+    self.oidbytes += ("%d" % (self.temp)).encode();
     self.temp = $$ % 40;
-    self.oid.push_back( self.temp );
-    self.oidstring = self.oidstring + ".%d" % (self.temp);
+    self.oidbytes += (".%d" % (self.temp)).encode();
     self.temp = 0;
   }
 
   sublist: ASN1ObjectIdentifierNibble[len - 1] foreach {
     self.temp = ( self.temp<<7 ) | $$.num;
     if ( $$.more != 1 ) {
-      self.oid.push_back(self.temp);
-      self.oidstring = self.oidstring + ".%d" % (self.temp);
+      self.oidbytes += (".%d" % (self.temp)).encode();
       self.temp = 0;
     }
+  }
+
+  on %done {
+    self.oidstring = self.oidbytes.decode();
   }
 };
 
@@ -255,7 +235,7 @@ public type ASN1Body = unit(head: ASN1Header, recursive: bool) {
     ASN1Type::BitString -> bitstr_value: ASN1BitString(head.len.len, head.tag.constructed);
 
     ASN1Type::OctetString -> str_value: ASN1OctetString(head.len.len, head.tag.constructed)
-                                        &convert=$$.value.decode(hilti::Charset::ASCII);
+                                        &convert=$$.value.decode(spicy::Charset::ASCII);
 
     ASN1Type::ObjectIdentifier -> str_value: ASN1ObjectIdentifier(head.len.len)
                                              &convert=$$.oidstring;
@@ -316,4 +296,3 @@ public type ASN1Message = unit(recursive: bool) {
 
   };
 };
-

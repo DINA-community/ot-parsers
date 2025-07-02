@@ -152,5 +152,5 @@ Copyright (c) 2023 by DINA-Community. [See License](/LICENSE)
 
 ### Third party licenses
 
-This projects uses code from [spicy-ldap](https://github.com/zeek/spicy-ldap/blob/main/analyzer/asn1.spicy) under the license provided in [asn1.spicy](/asn1.spicy) for all provided parsers.
+This projects uses code from [spicy-ldap](https://github.com/zeek/spicy-ldap/blob/main/analyzer/asn1.spicy) under the license provided in [asn1.spicy](analyzer/asn1.spicy) for all provided parsers.
 Additional for IEC 61850 MMS this project uses pcap files from [smartgridadsc/MMS-protocol-parser-for-Zeek-IDS](https://github.com/smartgridadsc/MMS-protocol-parser-for-Zeek-IDS).
