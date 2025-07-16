@@ -1,8 +1,0 @@
-# Zeek-specific Spicy logic.
-
-module Zeek_sv;
-
-import sv;
-import zeek;
-
-# TODO: Add anything you need here.
