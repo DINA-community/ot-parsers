@@ -57,6 +57,9 @@ COTP
 GOOSE
 : Generic Object Oriented Substation Events
 
+HART
+: Highway Addressable Remote Transducer Protocol
+
 ICCP
 : Inter-Control Center Communications Protocol
 
@@ -81,6 +84,9 @@ PDU
 PRES
 : Connection-Oriented Presentation Protocol
 
+SESS
+: SESSsion protocol
+
 SV
 : Sampled Values
 
@@ -90,8 +96,8 @@ TASE
 TCP
 : Transmission Control Protocol
 
-TPKG
-: Transport Packet
+TPKT
+: TCP Packet
 
 ---
 
