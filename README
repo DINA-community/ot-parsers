@@ -15,7 +15,7 @@ In order to test a parser a corresponding pcap is required.
 
 ## Overview ICSNPP Packages
 
-Industrial Control Systems protocol parsers plugins for the Zeeknetwork security monitoring framework, usually using [Spicy](https://docs.zeek.org/projects/spicy/en/latest/).
+Industrial Control Systems protocol parsers plugins for the Zeek network security monitoring framework, usually using [Spicy](https://docs.zeek.org/projects/spicy/en/latest/).
 The following Zeek Plugins are currently provided:
 
 - **IEC 60870**
@@ -73,7 +73,7 @@ MMS
 : Manufacturing Messaging Specification
 
 OSI
-: Open Systems Interconnection 
+: Open Systems Interconnection
 
 PDU
 : Protocol Data Unit
