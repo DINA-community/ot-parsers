@@ -41,7 +41,7 @@ The following Zeek Plugins are currently provided:
 
 ## Important Notes
 
-The Parsers where developed within a IT/OT-Lab environment, under usage of real, captured network traffic.
+The parsers where developed within a IT/OT-Lab environment, under usage of real, captured network traffic.
 Remember that your live plant and network traffic might differ from our tested cases, due to a lack of reliant network data, which might result in unexpected behavior of the parsers. In such a case we encourage you to participate in our cause by improving the given parsers.
 
  ---
