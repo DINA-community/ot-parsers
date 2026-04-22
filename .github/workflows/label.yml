@@ -1,0 +1,31 @@
+description: This action set the labels with the profiles from the .github repository 
+
+name: Labelsetter
+
+# Controls when the workflow will run
+on:
+  # Only manually action
+  workflow_dispatch:
+
+jobs:
+  labeler:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+         
+      - name: Checkout
+        uses: actions/checkout@v5
+      
+      - name: Checkout org .github repo
+        uses: actions/checkout@v5
+        with:
+          repository: DINA-community/.github
+          path: org-github
+      
+      - name: Run Labeler
+        uses: crazy-max/ghaction-github-labeler@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          yaml-file: org-github/labels/label_default.yaml
