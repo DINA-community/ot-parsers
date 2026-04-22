@@ -105,4 +105,4 @@ TPKT
 
 The software was developed on behalf of the [**BSI**](https://www.bsi.bund.de) \(Federal Office for Information Security\)
 
-Copyright © 2023-2025 by DINA-Community BSD 3-Clause License. [See License](/LICENSE)
+Copyright © 2023-2026 by DINA-Community BSD 3-Clause License. [See License](/LICENSE)
