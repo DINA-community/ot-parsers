@@ -1,5 +1,5 @@
-name: Labeler
-description: Set Labels for PR and new Issues
+name: Project
+description: Add issue to a project
 
 on:
   pull_request_target:
@@ -7,39 +7,13 @@ on:
    types: 
     - opened
     
-jobs:
-  label-pull-requests:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: write
-    steps:      
-      - name: set_Labels_by_files
-        if: github.event_name == 'pull_request'
-        uses: actions/labeler@v6
-        with:
-          configuration-path: .github/label-rules.yml
-          github-token: ${{ secrets.Label_set }}
-
-  add-default-label:
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout
-        uses: actions/checkout@v5
-    
-      - name: add label
-        uses: actions-ecosystem/action-add-labels@v1.1.0
-        with:
-          github-token: ${{ secrets.Label_set }}
-          labels: bug
-    
+jobs: 
   add-to-project:
     name: Add issue to project
     runs-on: ubuntu-latest
     steps:
       - uses: actions/add-to-project@v1.0.2
         with:
-          project-url: https://github.com/orgs/DINA-community/projects/5
+          project-url: https://github.com/orgs/DINA-community/projects/4
           github-token: ${{ secrets.Label_set }}
 
