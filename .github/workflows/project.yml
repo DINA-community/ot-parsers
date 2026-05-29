@@ -2,6 +2,13 @@ name: Project
 description: Add issue to a project
 
 on:
+  workflow_call:
+    inputs:
+      projectnumber:
+        description: 'Version number of the corresponding project'
+        default: 4
+        required: false
+        type: number
   pull_request_target:
   issues:
    types: 
@@ -12,8 +19,9 @@ jobs:
     name: Add issue to project
     runs-on: ubuntu-latest
     steps:
+      - run: echo Project number is ${{ inputs.projectnumber }}
       - uses: actions/add-to-project@v2
         with:
-          project-url: https://github.com/orgs/DINA-community/projects/4
+          project-url: https://github.com/orgs/DINA-community/projects/{{ inputs.projectnumber }}
           github-token: ${{ secrets.Label_set }}
 
