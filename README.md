@@ -1,6 +1,6 @@
 # Parsers for Industrial Control Systems Network Protocols
 
-> :information_source: The individual parsers have been moved to "per parser" repositories, according to [Zeek Package Manager](https://docs.zeek.org/projects/package-manager/en/stable/) requirements.
+> :information_source: The individual parsers have there own repository, according to [Zeek Package Manager](https://docs.zeek.org/projects/package-manager/en/stable/) requirements.
 
 The goal is to develop and share parsers for Industrial Control Systems Network Protocol Parsers (ICSNPP) in [Zeek](https://docs.zeek.org/en/master/about.html).\
 There are several ways to contribute:
@@ -19,8 +19,8 @@ Industrial Control Systems protocol parsers plugins for the Zeek network securit
 The following Zeek Plugins are currently provided:
 
 - **IEC 60870**
-  - [IEC 60870-5-104](https://github.com/DINA-community/icsnpp-iec60870-5-104)
-  - [IEC 60870-6  - ICCP & TASE.2](https://github.com/DINA-community/icsnpp-iccp)
+  - [IEC 60870-5-104](https://github.com/DINA-community/icsnpp-iec60870-5-104) ![Status](https://img.shields.io/badge/-archived-darkred)
+  - [IEC 60870-6 ICCP & TASE.2](https://github.com/DINA-community/icsnpp-iccp)
     - [TPKT PDUs over TCP](https://github.com/DINA-community/icsnpp-tpkt)
     - [Automated Code Generator for ICSNPP Plugins](https://github.com/DINA-community/icsnpp-util)
 - **IEC 61850**
@@ -33,7 +33,9 @@ The following Zeek Plugins are currently provided:
   - [ISO 8823 - PRES](https://github.com/DINA-community/icsnpp-pres)
   - [ISO 9506 - MMS](https://github.com/DINA-community/icsnpp-mms)
 - **HCF_SPEC-013**
-  - [HART-IP](https://github.com/DINA-community/icsnpp-hartip)
+  - [HART-IP](https://github.com/DINA-community/icsnpp-hartip) ![Status](https://img.shields.io/badge/-archived-darkred)
+- **OCIT**
+  - [BTPPL](https://github.com/DINA-community/icsnpp-btppl)
 
 > :information_source: Navigate to the specific repository to learn more about the scope, implemented functions and metadata.
 
@@ -50,6 +52,9 @@ Remember that your live plant and network traffic might differ from our tested c
 
 ACSE
 : Association Control Service Element
+
+BTPPL
+: Basic Transport Packet Protocol Layer
 
 COTP
 : Connection Oriented Transport Protocol
