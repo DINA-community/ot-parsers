@@ -20,7 +20,7 @@ The following Zeek Plugins are currently provided:
 
 - **IEC 60870**
   - [IEC 60870-5-104](https://github.com/DINA-community/icsnpp-iec60870-5-104) ![Status](https://img.shields.io/badge/-archived-darkred)
-  - [ICCP & TASE.2](https://github.com/DINA-community/icsnpp-iccp)
+  - [IEC 60870-6 ICCP & TASE.2](https://github.com/DINA-community/icsnpp-iccp)
     - [TPKT PDUs over TCP](https://github.com/DINA-community/icsnpp-tpkt)
     - [Automated Code Generator for ICSNPP Plugins](https://github.com/DINA-community/icsnpp-util)
 - **IEC 61850**
